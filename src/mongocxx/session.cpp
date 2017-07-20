@@ -12,12 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <mongocxx/private/session.hh>
 #include <mongocxx/session.hpp>
 
 #include <mongocxx/config/private/prelude.hh>
 
 namespace mongocxx {
 MONGOCXX_INLINE_NAMESPACE_BEGIN
+
+session::impl& session::_get_impl() {
+    return *_impl;
+}
+
+const session::impl& session::_get_impl() const {
+    return *_impl;
+}
 
 MONGOCXX_INLINE_NAMESPACE_END
 }  // namespace mongocxx

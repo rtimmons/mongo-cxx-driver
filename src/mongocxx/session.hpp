@@ -138,6 +138,17 @@ class MONGOCXX_API session {
     ///
     class database operator[](bsoncxx::string::view_or_value name) const&;
     class database operator[](bsoncxx::string::view_or_value name) const&& = delete;
+
+   private:
+    MONGOCXX_PRIVATE session() = default;
+
+    class MONGOCXX_PRIVATE impl;
+    class client;
+
+    MONGOCXX_PRIVATE impl& _get_impl();
+    MONGOCXX_PRIVATE const impl& _get_impl() const;
+
+    std::unique_ptr<impl> _impl;
 };
 
 MONGOCXX_INLINE_NAMESPACE_END

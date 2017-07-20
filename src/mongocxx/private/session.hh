@@ -1,0 +1,59 @@
+// Copyright 2017 MongoDB Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include <mongocxx/private/libmongoc.hh>
+#include <mongocxx/session.hpp>
+
+#include <mongocxx/config/private/prelude.hh>
+
+namespace mongocxx {
+MONGOCXX_INLINE_NAMESPACE_BEGIN
+
+class session::impl {
+   public:
+    impl() : _session(nullptr) {}
+
+    impl(mongoc_client_t* client, options::session opts) : _session(nullptr) {
+        std::unique_ptr<mongoc_session_opt_t, decltype(libmongoc::session_opts_destroy)>
+            session_opts{libmongoc::session_opts_new(), libmongoc::session_opts_destroy};
+
+        if (opts.write_concern()) {
+            // waiting on c driver
+        }
+
+        if (opts.read_preference()) {
+            // waiting on c driver
+        }
+
+        if (opts.read_concern()) {
+            // waiting on c driver
+        }
+
+        _session = libmongoc::client_start_session(client, session_opts.get(), NULL);
+    }
+
+    ~impl() {
+        libmongoc::session_destroy(_session);
+    }
+
+   private:
+    mongoc_session_t* _session;
+};
+
+MONGOCXX_INLINE_NAMESPACE_END
+}  // namespace mongocxx
+
+#include <mongocxx/config/private/postlude.hh>
