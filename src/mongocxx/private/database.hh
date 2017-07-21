@@ -19,6 +19,7 @@
 #include <mongocxx/private/client.hh>
 #include <mongocxx/private/libmongoc.hh>
 #include <mongocxx/private/write_concern.hh>
+#include <mongocxx/session.hpp>
 
 #include <mongocxx/config/private/prelude.hh>
 

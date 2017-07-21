@@ -24,9 +24,9 @@ MONGOCXX_INLINE_NAMESPACE_BEGIN
 
 class session::impl {
    public:
-    impl() : _session(nullptr) {}
+    impl() : session_t(nullptr) {}
 
-    impl(mongoc_client_t* client, options::session opts) : _session(nullptr) {
+    impl(mongoc_client_t* client, options::session opts) : session_t(nullptr) {
         std::unique_ptr<mongoc_session_opt_t, decltype(libmongoc::session_opts_destroy)>
             session_opts{libmongoc::session_opts_new(), libmongoc::session_opts_destroy};
 
@@ -42,15 +42,14 @@ class session::impl {
             // waiting on c driver
         }
 
-        _session = libmongoc::client_start_session(client, session_opts.get(), NULL);
+        session_t = libmongoc::client_start_session(client, session_opts.get(), NULL);
     }
 
     ~impl() {
-        libmongoc::session_destroy(_session);
+        libmongoc::session_destroy(session_t);
     }
 
-   private:
-    mongoc_session_t* _session;
+    mongoc_session_t* session_t;
 };
 
 MONGOCXX_INLINE_NAMESPACE_END

@@ -15,10 +15,27 @@
 #include <mongocxx/private/session.hh>
 #include <mongocxx/session.hpp>
 
+#include <mongocxx/client.hpp>
 #include <mongocxx/config/private/prelude.hh>
+#include <mongocxx/private/client.hh>
 
 namespace mongocxx {
 MONGOCXX_INLINE_NAMESPACE_BEGIN
+
+session::session(const mongocxx::client& client, const options::session& options)
+    : _impl{stdx::make_unique<impl>(client._get_impl().client_t, options)} {}
+
+const mongocxx::client& session::client() const {
+    return *_client;
+}
+
+class database session::database(bsoncxx::string::view_or_value name) const& {
+    return mongocxx::database{*this, std::move(name)};
+}
+
+class database session::operator[](bsoncxx::string::view_or_value name) const& {
+    return database(name);
+}
 
 session::impl& session::_get_impl() {
     return *_impl;

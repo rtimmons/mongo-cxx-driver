@@ -32,6 +32,7 @@
 #include <mongocxx/private/libmongoc.hh>
 #include <mongocxx/private/read_concern.hh>
 #include <mongocxx/private/read_preference.hh>
+#include <mongocxx/private/session.hh>
 
 #include <mongocxx/config/private/prelude.hh>
 
@@ -54,6 +55,12 @@ database::database(const class client& client, bsoncxx::string::view_or_value na
           libmongoc::client_get_database(client._get_impl().client_t, name.terminated().data()),
           &client._get_impl(),
           name.terminated().data())) {}
+
+database::database(const class session& session, bsoncxx::string::view_or_value name)
+    : _impl{stdx::make_unique<impl>(
+          libmongoc::session_get_database(session._get_impl().session_t, name.terminated().data()),
+          &session.client()._get_impl(),
+          name.terminated().data())} {}
 
 database::database(const database& d) {
     if (d) {

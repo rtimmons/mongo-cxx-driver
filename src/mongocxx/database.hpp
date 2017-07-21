@@ -303,8 +303,10 @@ class MONGOCXX_API database {
    private:
     friend class client;
     friend class collection;
+    friend class session;
 
     MONGOCXX_PRIVATE database(const class client& client, bsoncxx::string::view_or_value name);
+    MONGOCXX_PRIVATE database(const class session& session, bsoncxx::string::view_or_value name);
 
     class MONGOCXX_PRIVATE impl;
 

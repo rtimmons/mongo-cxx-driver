@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <bsoncxx/stdx/make_unique.hpp>
 #include <bsoncxx/string/view_or_value.hpp>
 #include <mongocxx/options/session.hpp>
 
@@ -32,7 +33,7 @@ class MONGOCXX_API session {
     /// @param options
     ///   Additional options for configuring the session.
     ///
-    session(const client& client, const options::session& options = {});
+    session(const mongocxx::client& client, const options::session& options = {});
 
     session(const session&) = delete;
 
@@ -41,17 +42,17 @@ class MONGOCXX_API session {
     ///
     /// Move constructs a session.
     ///
-    session(session&&) noexcept;
+    session(session&&) noexcept = default;
 
     ///
     /// Move assigns a session.
     ///
-    session& operator=(session&&) noexcept;
+    session& operator=(session&&) noexcept = default;
 
     ///
     /// Ends and destroys the session.
     ///
-    ~session();
+    ~session() = default;
 
     ///
     /// Gets the client that started this session.
@@ -59,7 +60,7 @@ class MONGOCXX_API session {
     /// @return
     ///   The client that started this session.
     ///
-    const mongocxx::client& client();
+    const mongocxx::client& client() const;
 
     ///
     /// Gets the current write concern for this session.
@@ -98,17 +99,6 @@ class MONGOCXX_API session {
     bool has_ended() const;
 
     ///
-    /// Ends this driver session.
-    ///
-    /// @note
-    ///   This does not have to be explicitly called unless the user wants to manually end the
-    ///   session before it gets destroyed.
-    /// @note
-    ///   If session has already ended, this method is a no-op.
-    ///
-    void end_session();
-
-    ///
     /// Obtains a database that represents a logical grouping of collections on a MongoDB server.
     ///
     /// @note
@@ -140,6 +130,8 @@ class MONGOCXX_API session {
     class database operator[](bsoncxx::string::view_or_value name) const&& = delete;
 
    private:
+    friend class database;
+
     MONGOCXX_PRIVATE session() = default;
 
     class MONGOCXX_PRIVATE impl;
@@ -149,6 +141,7 @@ class MONGOCXX_API session {
     MONGOCXX_PRIVATE const impl& _get_impl() const;
 
     std::unique_ptr<impl> _impl;
+    mongocxx::client* _client;
 };
 
 MONGOCXX_INLINE_NAMESPACE_END
