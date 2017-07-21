@@ -34,6 +34,7 @@ namespace mongocxx {
 MONGOCXX_INLINE_NAMESPACE_BEGIN
 
 class client;
+class session;
 
 ///
 /// Class representing a MongoDB database.
@@ -263,6 +264,15 @@ class MONGOCXX_API database {
     /// @return the current write_concern
     ///
     class write_concern write_concern() const;
+
+    ///
+    /// Gets a pointer to the session that this database is associated with, if any.
+    ///
+    /// @return
+    ///   Pointer to the session that this database is associated with. If the database is not
+    ///   associated with any session, returns a null pointer.
+    ///
+    const session* session() const;
 
     ///
     /// Access a collection (logical grouping of documents) within this database.

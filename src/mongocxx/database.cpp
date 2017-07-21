@@ -33,6 +33,7 @@
 #include <mongocxx/private/read_concern.hh>
 #include <mongocxx/private/read_preference.hh>
 #include <mongocxx/private/session.hh>
+#include <mongocxx/session.hpp>
 
 #include <mongocxx/config/private/prelude.hh>
 
@@ -60,7 +61,8 @@ database::database(const class session& session, bsoncxx::string::view_or_value 
     : _impl{stdx::make_unique<impl>(
           libmongoc::session_get_database(session._get_impl().session_t, name.terminated().data()),
           &session.client()._get_impl(),
-          name.terminated().data())} {}
+          name.terminated().data(),
+          &session)} {}
 
 database::database(const database& d) {
     if (d) {
@@ -315,6 +317,10 @@ const database::impl& database::_get_impl() const {
 database::impl& database::_get_impl() {
     auto cthis = const_cast<const database*>(this);
     return const_cast<database::impl&>(cthis->_get_impl());
+}
+
+const session* database::session() const {
+    return _get_impl().session;
 }
 
 MONGOCXX_INLINE_NAMESPACE_END

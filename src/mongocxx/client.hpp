@@ -19,8 +19,10 @@
 #include <bsoncxx/string/view_or_value.hpp>
 #include <mongocxx/database.hpp>
 #include <mongocxx/options/client.hpp>
+#include <mongocxx/options/session.hpp>
 #include <mongocxx/read_concern.hpp>
 #include <mongocxx/read_preference.hpp>
+#include <mongocxx/session.hpp>
 #include <mongocxx/stdx.hpp>
 #include <mongocxx/uri.hpp>
 #include <mongocxx/write_concern.hpp>
@@ -216,6 +218,17 @@ class MONGOCXX_API client {
     /// @see https://docs.mongodb.com/master/reference/command/listDatabases
     ///
     cursor list_databases() const;
+
+    ///
+    /// Begins a new session associated with this client with the provided options.
+    ///
+    /// @param options (optional)
+    ///   Options for creating the session.
+    ///
+    /// @return
+    ///   A new session associated with this client.
+    ///
+    session start_session(const options::session& options = {});
 
    private:
     friend class collection;

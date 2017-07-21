@@ -26,7 +26,8 @@ class session::impl {
    public:
     impl() : session_t(nullptr) {}
 
-    impl(mongoc_client_t* client, options::session opts) : session_t(nullptr) {
+    impl(const class mongocxx::client* client, options::session opts)
+        : client{client}, session_t(nullptr) {
         std::unique_ptr<mongoc_session_opt_t, decltype(libmongoc::session_opts_destroy)>
             session_opts{libmongoc::session_opts_new(), libmongoc::session_opts_destroy};
 
@@ -42,13 +43,15 @@ class session::impl {
             // waiting on c driver
         }
 
-        session_t = libmongoc::client_start_session(client, session_opts.get(), NULL);
+        session_t =
+            libmongoc::client_start_session(client->_get_impl().client_t, session_opts.get(), NULL);
     }
 
     ~impl() {
         libmongoc::session_destroy(session_t);
     }
 
+    const class mongocxx::client* client;
     mongoc_session_t* session_t;
 };
 

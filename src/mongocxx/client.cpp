@@ -115,6 +115,10 @@ cursor client::list_databases() const {
     return cursor(result);
 }
 
+mongocxx::session client::start_session(const options::session& options) {
+    return session{*this, options};
+}
+
 const client::impl& client::_get_impl() const {
     if (!_impl) {
         throw logic_error{error_code::k_invalid_client_object};

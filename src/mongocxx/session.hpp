@@ -25,15 +25,7 @@ MONGOCXX_INLINE_NAMESPACE_BEGIN
 
 class MONGOCXX_API session {
    public:
-    ///
-    /// Creates a new session.
-    ///
-    /// @param client
-    ///   The client that created this session.
-    /// @param options
-    ///   Additional options for configuring the session.
-    ///
-    session(const mongocxx::client& client, const options::session& options = {});
+    session() = delete;
 
     session(const session&) = delete;
 
@@ -42,17 +34,17 @@ class MONGOCXX_API session {
     ///
     /// Move constructs a session.
     ///
-    session(session&&) noexcept = default;
+    session(session&&) noexcept;
 
     ///
     /// Move assigns a session.
     ///
-    session& operator=(session&&) noexcept = default;
+    session& operator=(session&&) noexcept;
 
     ///
     /// Ends and destroys the session.
     ///
-    ~session() = default;
+    ~session();
 
     ///
     /// Gets the client that started this session.
@@ -90,15 +82,6 @@ class MONGOCXX_API session {
     class read_preference read_preference() const;
 
     ///
-    /// Returns whether the driver session has ended. A driver session has ended when endSession has
-    /// been called.
-    ///
-    /// @return
-    ///   whether the driver session as ended.
-    ///
-    bool has_ended() const;
-
-    ///
     /// Obtains a database that represents a logical grouping of collections on a MongoDB server.
     ///
     /// @note
@@ -131,17 +114,25 @@ class MONGOCXX_API session {
 
    private:
     friend class database;
+    friend class collection;
+    friend class client;
 
-    MONGOCXX_PRIVATE session() = default;
+    ///
+    /// Creates a new session.
+    ///
+    /// @param client
+    ///   The client that created this session.
+    /// @param options
+    ///   Additional options for configuring the session.
+    ///
+    session(const mongocxx::client& client, const options::session& options = {});
 
     class MONGOCXX_PRIVATE impl;
-    class client;
 
     MONGOCXX_PRIVATE impl& _get_impl();
     MONGOCXX_PRIVATE const impl& _get_impl() const;
 
     std::unique_ptr<impl> _impl;
-    mongocxx::client* _client;
 };
 
 MONGOCXX_INLINE_NAMESPACE_END

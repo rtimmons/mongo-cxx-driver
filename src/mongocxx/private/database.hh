@@ -28,12 +28,16 @@ MONGOCXX_INLINE_NAMESPACE_BEGIN
 
 class database::impl {
    public:
-    impl(mongoc_database_t* db, const class client::impl* client, std::string name)
-        : database_t(db), client_impl(client), name(std::move(name)) {}
+    impl(mongoc_database_t* db,
+         const class client::impl* client,
+         std::string name,
+         const class mongocxx::session* session = nullptr)
+        : database_t(db), client_impl(client), session{session}, name(std::move(name)) {}
 
     impl(const impl& i)
         : database_t{libmongoc::database_copy(i.database_t)},
           client_impl{i.client_impl},
+          session{i.session},
           name{i.name} {}
 
     impl& operator=(const impl& i) {
@@ -41,6 +45,7 @@ class database::impl {
         database_t = libmongoc::database_copy(i.database_t);
         client_impl = i.client_impl;
         name = i.name;
+        session = i.session;
 
         return *this;
     }
@@ -51,6 +56,8 @@ class database::impl {
 
     mongoc_database_t* database_t;
     const class client::impl* client_impl;
+    const class mongocxx::session* session;
+
     std::string name;
 };
 

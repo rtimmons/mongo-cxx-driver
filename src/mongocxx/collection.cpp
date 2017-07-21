@@ -54,6 +54,7 @@
 #include <mongocxx/private/pipeline.hh>
 #include <mongocxx/private/read_concern.hh>
 #include <mongocxx/private/read_preference.hh>
+#include <mongocxx/private/session.hh>
 #include <mongocxx/private/write_concern.hh>
 #include <mongocxx/result/bulk_write.hpp>
 #include <mongocxx/result/delete.hpp>
@@ -61,6 +62,7 @@
 #include <mongocxx/result/insert_one.hpp>
 #include <mongocxx/result/replace_one.hpp>
 #include <mongocxx/result/update.hpp>
+#include <mongocxx/session.hpp>
 #include <mongocxx/write_concern.hpp>
 
 #include <mongocxx/config/private/prelude.hh>
@@ -186,7 +188,8 @@ collection::collection(const database& database, bsoncxx::string::view_or_value 
           libmongoc::database_get_collection(database._get_impl().database_t,
                                              collection_name.terminated().data()),
           database.name(),
-          database._get_impl().client_impl)) {}
+          database._get_impl().client_impl,
+          database.session())) {}
 
 collection::collection(const database& database, void* collection)
     : _impl(stdx::make_unique<impl>(static_cast<mongoc_collection_t*>(collection),
@@ -960,6 +963,10 @@ const collection::impl& collection::_get_impl() const {
 collection::impl& collection::_get_impl() {
     auto cthis = const_cast<const collection*>(this);
     return const_cast<collection::impl&>(cthis->_get_impl());
+}
+
+const class session* collection::session() const {
+    return _get_impl().session;
 }
 
 MONGOCXX_INLINE_NAMESPACE_END

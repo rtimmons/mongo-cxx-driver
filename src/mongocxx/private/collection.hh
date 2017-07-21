@@ -33,13 +33,18 @@ class collection::impl {
    public:
     impl(mongoc_collection_t* collection,
          stdx::string_view database_name,
-         const class client::impl* client)
-        : collection_t(collection), database_name(std::move(database_name)), client_impl(client) {}
+         const class client::impl* client,
+         const class session* session = nullptr)
+        : collection_t(collection),
+          database_name(std::move(database_name)),
+          client_impl(client),
+          session{session} {}
 
     impl(const impl& i)
         : collection_t{libmongoc::collection_copy(i.collection_t)},
           database_name{i.database_name},
-          client_impl{i.client_impl} {}
+          client_impl{i.client_impl},
+          session{i.session} {}
 
     impl& operator=(const impl& i) {
         libmongoc::collection_destroy(collection_t);
@@ -63,6 +68,7 @@ class collection::impl {
     mongoc_collection_t* collection_t;
     std::string database_name;
     const class client::impl* client_impl;
+    const class session* session;
 };
 
 MONGOCXX_INLINE_NAMESPACE_END

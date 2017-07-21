@@ -12,21 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <mongocxx/private/session.hh>
 #include <mongocxx/session.hpp>
 
 #include <mongocxx/client.hpp>
-#include <mongocxx/config/private/prelude.hh>
 #include <mongocxx/private/client.hh>
+#include <mongocxx/private/session.hh>
+
+#include <mongocxx/config/private/prelude.hh>
 
 namespace mongocxx {
 MONGOCXX_INLINE_NAMESPACE_BEGIN
 
 session::session(const mongocxx::client& client, const options::session& options)
-    : _impl{stdx::make_unique<impl>(client._get_impl().client_t, options)} {}
+    : _impl{stdx::make_unique<impl>(&client, options)} {}
+
+session::~session() = default;
+
+session& session::operator=(session&& other) noexcept = default;
+
+session::session(session&& other) noexcept = default;
 
 const mongocxx::client& session::client() const {
-    return *_client;
+    return *_get_impl().client;
 }
 
 class database session::database(bsoncxx::string::view_or_value name) const& {
@@ -34,7 +41,7 @@ class database session::database(bsoncxx::string::view_or_value name) const& {
 }
 
 class database session::operator[](bsoncxx::string::view_or_value name) const& {
-    return database(name);
+    return session::database(name);
 }
 
 session::impl& session::_get_impl() {
