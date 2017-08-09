@@ -25,6 +25,7 @@
 #include <mongocxx/instance.hpp>
 #include <mongocxx/logger.hpp>
 #include <mongocxx/options/client.hpp>
+#include <mongocxx/session.hpp>
 #include <mongocxx/uri.hpp>
 
 namespace {
@@ -80,7 +81,17 @@ int main(int argc, char* argv[]) {
 
         auto result = admin.run_command(make_document(kvp("isMaster", 1)));
 
-        std::cout << bsoncxx::to_json(result) << "\n";
+        std::cout << "For client: " << bsoncxx::to_json(result) << "\n";
+
+        // You can also use a session to access the database.
+
+        auto session = client.start_session();
+
+        auto admin2 = session["admin"];
+
+        auto result2 = admin2.run_command(make_document(kvp("isMaster", 1)));
+
+        std::cout << "For session: " << bsoncxx::to_json(result2) << "\n";
 
         return EXIT_SUCCESS;
 
