@@ -62,6 +62,38 @@ void aggregation_examples(const mongocxx::database& db) {
         auto count = std::distance(cursor.begin(), cursor.end());
         assert(count == 0L);
     }
+
+    {
+        // Start Aggregation Example 3
+        using namespace bsoncxx::builder::basic;
+
+        mongocxx::pipeline p{};
+        p.unwind("$items");
+        p.group(make_document(
+            kvp("_id", make_document(kvp("day", make_document(kvp("$dayOfWeek", "$date"))))),
+            kvp("items_sold", make_document(kvp("$sum", "$items.quantity"))),
+            kvp("revenue",
+                make_document(
+                    kvp("$sum",
+                        make_document(
+                            kvp("$multiply", make_array("$items.quantity", "$items.price"))))))));
+        p.project(make_document(
+            kvp("day", "$_id.day"),
+            kvp("revenue", 1),
+            kvp("items_sold", 1),
+            kvp("discount",
+                make_document(
+                    kvp("$cond",
+                        make_document(
+                            kvp("if", make_document(kvp("$lte", make_array("$revenue", 250)))),
+                            kvp("then", 25),
+                            kvp("else", 0)))))));
+        auto cursor = db["sales"].aggregate(p, mongocxx::options::aggregate{});
+        // End Aggregation Example 3
+
+        auto count = std::distance(cursor.begin(), cursor.end());
+        assert(count == 0L);
+    }
 }
 
 int main() {
