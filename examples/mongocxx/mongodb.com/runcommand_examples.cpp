@@ -23,14 +23,13 @@
 // NOTE: Any time this file is modified, a DOCS ticket should be opened to sync the changes with the
 // corresponding page on docs.mongodb.com. See CXX-1514, CXX-1249, and DRIVERS-356 for more info.
 
-#undef NDEBUG
-
 void runcommand_examples(mongocxx::database& db) {
     {
         // Start runCommand Example 1
         using namespace bsoncxx::builder::basic;
         auto buildInfo = db.run_command(make_document(kvp("buildInfo", 1)));
         // End runCommand Example 1
+
         assert(buildInfo.view()["ok"].get_double() == double{1});
     }
 
