@@ -108,3 +108,59 @@ int main() {
 
     return EXIT_SUCCESS;
 }
+
+/*
+Below is a dumb node.js script to convert js objects into make_document() etc arguments.
+Example:
+ $ echo '{ foo:"bar" }' | node ./index.js
+ make_document(kvp("foo", "bar"))
+Need to `npm install get-stdin` first. Run clang formatter to make the output legible.
+
+    #!/usr/bin/env node
+    const getStdin = require('get-stdin');
+    var toCpp = function(obj) {
+        var out = [];
+
+        if (obj instanceof Array) {
+            out.push("make_array(");
+            var its = [];
+            for(k in obj) {
+                its.push(toCpp(obj[k]));
+            }
+            out.push(its.join(", "));
+            out.push(")");
+        }
+        else if (typeof(obj) == 'string') {
+            out.push('"' + obj + '"');
+        }
+        else if (typeof(obj) == 'number') {
+            out.push(obj);
+        }
+        else if (typeof(obj) == 'object') {
+            out.push("make_document(");
+            var its = [];
+            for(k in obj) {
+                var it = [];
+                it.push("kvp(");
+                it.push('"' + k + '"')
+                it.push(", ");
+                it.push(toCpp(obj[k]));
+                it.push(")");
+                its.push(it.join(''));
+            }
+            out.push(its.join(', '));
+            out.push(")");
+        }
+        else {
+            throw "Unknown type of " + JSON.stringify(obj);
+        }
+        return out.join('');
+    };
+
+    getStdin().then(str => {
+        eval('j = ' + str);
+        var out = toCpp(j);
+        console.log(out);
+    });
+
+*/
