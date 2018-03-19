@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <cassert>
-#include <iostream>
 
 #include <bsoncxx/builder/basic/array.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -44,8 +43,7 @@ void runcommand_examples(mongocxx::database& db) {
         auto buildInfo = db.run_command(make_document(kvp("collStats", "restaurants")));
         // End runCommand Example 1
 
-        assert(buildInfo.view()["ok"].get_double() ==
-               double{1});  // because empty db doesn't have this collection
+        assert(buildInfo.view()["ok"].get_double() == double{1});
     }
 }
 

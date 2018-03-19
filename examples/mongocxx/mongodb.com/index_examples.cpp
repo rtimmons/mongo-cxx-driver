@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <cassert>
-#include <iostream>
 
 #include <bsoncxx/builder/basic/array.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -35,8 +34,9 @@ void index_examples(const mongocxx::database& db) {
         // Start Index Example 2
         using namespace bsoncxx::builder::basic;
         auto result = db["restaurants"].create_index(
-                make_document(kvp("cuisine", 1), kvp("name", 1)),
-                make_document(kvp("partialFilterExpression", make_document(kvp("rating", make_document(kvp("$gt", 5)))))));
+            make_document(kvp("cuisine", 1), kvp("name", 1)),
+            make_document(kvp("partialFilterExpression",
+                              make_document(kvp("rating", make_document(kvp("$gt", 5)))))));
         // End Index Example 2
     }
 }
