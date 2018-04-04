@@ -25,11 +25,6 @@ namespace mongocxx {
 MONGOCXX_INLINE_NAMESPACE_BEGIN
 
 class change_stream::impl {
-    // no copy or move
-    impl(impl&) = delete;
-    impl(impl&&) = delete;
-    impl& operator=(const impl&) = delete;
-
    public:
     // lifecycle of the cursor
     // k_started means that libmongoc::change_stream_next has been called at least once.
@@ -39,6 +34,12 @@ class change_stream::impl {
 
     explicit impl(mongoc_change_stream_t* change_stream)
         : change_stream_{change_stream}, status_{state::k_pending}, exhausted_{true} {}
+
+    // no copy or move
+    impl(impl&) = delete;
+    impl(impl&&) = delete;
+    void operator=(const impl&) = delete;
+    void operator=(impl&&) = delete;
 
     ~impl() {
         libmongoc::change_stream_destroy(this->change_stream_);

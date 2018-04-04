@@ -84,18 +84,19 @@ change_stream::iterator change_stream::end() {
 change_stream::iterator::iterator() : change_stream::iterator::iterator{nullptr} {}
 
 change_stream::iterator::iterator(change_stream* change_stream) : _change_stream(change_stream) {
-    if (_change_stream == nullptr || _change_stream->_impl->has_started()) {
+    if (!_change_stream || _change_stream->_impl->has_started()) {
         return;
     }
 
     _change_stream->_impl->mark_started();
+    // Advance to first event on begin() to keep operator*() state-machine-free.
     operator++();
 }
 
 bool change_stream::iterator::is_exhausted() const {
     // An iterator is exhausted if it is the end-iterator (_change_stream == nullptr)
     // or if the underlying _change_stream is marked exhausted.
-    return _change_stream == nullptr || _change_stream->_impl->is_exhausted();
+    return !_change_stream || _change_stream->_impl->is_exhausted();
 }
 
 const bsoncxx::document::view& change_stream::iterator::operator*() const noexcept {
@@ -106,15 +107,11 @@ const bsoncxx::document::view* change_stream::iterator::operator->() const noexc
     return &_change_stream->_impl->doc();
 }
 
-//
-// Iterators are equal if they point to the same underlying _change_stream or if they
-// both are "at the end".  We check for exhaustion first because the most
-// common check is `iter != change_stream.end()`.
-//
+// Don't worry about the case of two iterators being created from
+// different change_streams
 bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
-                              const change_stream::iterator& rhs) {
-    return ((rhs.is_exhausted() && lhs.is_exhausted()) ||
-            (lhs._change_stream == rhs._change_stream));
+                              const change_stream::iterator& rhs) noexcept {
+    return rhs.is_exhausted() && lhs.is_exhausted();
 }
 
 bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,
