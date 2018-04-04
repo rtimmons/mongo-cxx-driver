@@ -54,7 +54,7 @@ static_assert(std::is_reference<change_stream::iterator::reference>::value, "");
 
 // void* since we don't leak C driver defs into C++ driver
 change_stream::change_stream(void* change_stream_ptr)
-    : _impl(stdx::make_unique<impl>(static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
+    : _impl(stdx::make_unique<impl>(*static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
 
 change_stream::change_stream(change_stream&&) noexcept = default;
 change_stream& change_stream::operator=(change_stream&&) noexcept = default;
@@ -115,7 +115,7 @@ bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
 }
 
 bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,
-                              const change_stream::iterator& rhs) {
+                              const change_stream::iterator& rhs) noexcept {
     return !(lhs == rhs);
 }
 
