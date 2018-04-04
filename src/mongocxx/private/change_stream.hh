@@ -76,20 +76,23 @@ class change_stream::impl {
 
     void advance_iterator() {
         const bson_t* out;
+
+        // Happy-case.
         if (libmongoc::change_stream_next(&this->change_stream_, &out)) {
             this->doc_ = bsoncxx::document::view{bson_get_data(out), out->len};
-        } else {
-            // Separate if/else branch to avoid stack-allocating bson_error_t in happy case
-            // change_stream_next succeeding.
-            bson_error_t error;
-            if (libmongoc::change_stream_error_document(&this->change_stream_, &error, &out)) {
-                this->mark_dead();
-                this->doc_ = bsoncxx::document::view{};
-                throw_exception<query_exception>(error);
-            } else {
-                this->mark_nothing_left();
-            }
+            return;
         }
+
+        // Check for errors or just nothing left.
+        bson_error_t error;
+        if (libmongoc::change_stream_error_document(&this->change_stream_, &error, &out)) {
+            this->mark_dead();
+            this->doc_ = bsoncxx::document::view{};
+            throw_exception<query_exception>(error);
+        }
+
+        // Just nothing left.
+        this->mark_nothing_left();
     }
 
     inline bsoncxx::document::view& doc() {
