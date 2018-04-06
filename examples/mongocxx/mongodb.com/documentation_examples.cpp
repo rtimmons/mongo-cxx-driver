@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cassert>
+#include <iostream>
 #include <vector>
 
 #include <bsoncxx/builder/basic/array.hpp>
@@ -28,6 +28,31 @@
 
 // NOTE: Any time this file is modified, a DOCS ticket should be opened to sync the changes with the
 // corresponding page on docs.mongodb.com. See CXX-1249 and DRIVERS-356 for more info.
+
+template <typename T>
+void check_field(const T& document, const char* field, bool should_have, int example_no) {
+    if (should_have) {
+        if (!document[field]) {
+            throw std::logic_error(std::string("document in example ") +
+                                   std::to_string(example_no) + " should have field " + field);
+        }
+    } else {
+        if (document[field]) {
+            throw std::logic_error(std::string("document in example ") +
+                                   std::to_string(example_no) + " should not have field " + field);
+        }
+    }
+}
+
+template <typename T>
+void check_has_field(const T& document, const char* field, int example_no) {
+    check_field(document, field, true, example_no);
+}
+
+template <typename T>
+void check_has_no_field(const T& document, const char* field, int example_no) {
+    check_field(document, field, false, example_no);
+}
 
 void insert_examples(mongocxx::database db) {
     db["inventory"].drop();
@@ -45,7 +70,9 @@ void insert_examples(mongocxx::database db) {
             kvp("size", make_document(kvp("h", 28), kvp("w", 35.5), kvp("uom", "cm")))));
         // End Example 1
 
-        assert(db["inventory"].count({}) == 1);
+        if (db["inventory"].count({}) != 1) {
+            throw std::logic_error("wrong count in example 1");
+        }
     }
 
     {
@@ -56,7 +83,9 @@ void insert_examples(mongocxx::database db) {
         auto cursor = db["inventory"].find(make_document(kvp("item", "canvas")));
         // End Example 2
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 2");
+        }
     }
 
     {
@@ -85,7 +114,9 @@ void insert_examples(mongocxx::database db) {
         db["inventory"].insert_many(docs);
         // End Example 3
 
-        assert(db["inventory"].count({}) == 4);
+        if (db["inventory"].count({}) != 4) {
+            throw std::logic_error("wrong count in example 3");
+        }
     }
 }
 
@@ -125,7 +156,9 @@ void query_top_level_fields_examples(mongocxx::database db) {
         db["inventory"].insert_many(docs);
         // End Example 6
 
-        assert(db["inventory"].count({}) == 5);
+        if (db["inventory"].count({}) != 5) {
+            throw std::logic_error("wrong count in example 6");
+        }
     }
 
     {
@@ -133,7 +166,9 @@ void query_top_level_fields_examples(mongocxx::database db) {
         auto cursor = db["inventory"].find({});
         // End Example 7
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 5);
+        if (std::distance(cursor.begin(), cursor.end()) != 5) {
+            throw std::logic_error("wrong count in example 7");
+        }
     }
 
     {
@@ -144,7 +179,9 @@ void query_top_level_fields_examples(mongocxx::database db) {
         auto cursor = db["inventory"].find(make_document(kvp("status", "D")));
         // End Example 9
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 2);
+        if (std::distance(cursor.begin(), cursor.end()) != 2) {
+            throw std::logic_error("wrong count in example 9");
+        }
     }
 
     {
@@ -157,7 +194,9 @@ void query_top_level_fields_examples(mongocxx::database db) {
             make_document(kvp("status", make_document(kvp("$in", make_array("A", "D"))))));
         // End Example 10
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 5);
+        if (std::distance(cursor.begin(), cursor.end()) != 5) {
+            throw std::logic_error("wrong count in example 10");
+        }
     }
 
     {
@@ -169,7 +208,9 @@ void query_top_level_fields_examples(mongocxx::database db) {
             make_document(kvp("status", "A"), kvp("qty", make_document(kvp("$lt", 30)))));
         // End Example 11
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 11");
+        }
     }
 
     {
@@ -184,7 +225,9 @@ void query_top_level_fields_examples(mongocxx::database db) {
                            make_document(kvp("qty", make_document(kvp("$lt", 30))))))));
         // End Example 12
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 3);
+        if (std::distance(cursor.begin(), cursor.end()) != 3) {
+            throw std::logic_error("wrong count in example 12");
+        }
     }
 
     {
@@ -200,7 +243,9 @@ void query_top_level_fields_examples(mongocxx::database db) {
                            make_document(kvp("item", bsoncxx::types::b_regex{"^p"}))))));
         // End Example 13
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 2);
+        if (std::distance(cursor.begin(), cursor.end()) != 2) {
+            throw std::logic_error("wrong count in example 13");
+        }
     }
 }
 
@@ -240,7 +285,9 @@ void query_embedded_documents_examples(mongocxx::database db) {
         db["inventory"].insert_many(docs);
         // End Example 14
 
-        assert(db["inventory"].count({}) == 5);
+        if (db["inventory"].count({}) != 5) {
+            throw std::logic_error("wrong count in example 14");
+        }
     }
 
     {
@@ -252,7 +299,9 @@ void query_embedded_documents_examples(mongocxx::database db) {
             kvp("size", make_document(kvp("h", 14), kvp("w", 21), kvp("uom", "cm")))));
         // End Example 15
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 15");
+        }
     }
 
     {
@@ -264,7 +313,9 @@ void query_embedded_documents_examples(mongocxx::database db) {
             kvp("size", make_document(kvp("w", 21), kvp("h", 14), kvp("uom", "cm")))));
         // End Example 16
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 0);
+        if (std::distance(cursor.begin(), cursor.end()) != 0) {
+            throw std::logic_error("wrong count in example 16");
+        }
     }
 
     {
@@ -275,7 +326,9 @@ void query_embedded_documents_examples(mongocxx::database db) {
         auto cursor = db["inventory"].find(make_document(kvp("size.uom", "in")));
         // End Example 17
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 2);
+        if (std::distance(cursor.begin(), cursor.end()) != 2) {
+            throw std::logic_error("wrong count in example 17");
+        }
     }
 
     {
@@ -287,7 +340,9 @@ void query_embedded_documents_examples(mongocxx::database db) {
             db["inventory"].find(make_document(kvp("size.h", make_document(kvp("$lt", 15)))));
         // End Example 18
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 4);
+        if (std::distance(cursor.begin(), cursor.end()) != 4) {
+            throw std::logic_error("wrong count in example 18");
+        }
     }
 
     {
@@ -301,7 +356,9 @@ void query_embedded_documents_examples(mongocxx::database db) {
                                                kvp("status", "D")));
         // End Example 19
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 19");
+        }
     }
 }
 
@@ -340,7 +397,9 @@ void query_arrays_examples(mongocxx::database db) {
         db["inventory"].insert_many(docs);
         // End Example 20
 
-        assert(db["inventory"].count({}) == 5);
+        if (db["inventory"].count({}) != 5) {
+            throw std::logic_error("wrong count in example 20");
+        }
     }
 
     {
@@ -352,7 +411,9 @@ void query_arrays_examples(mongocxx::database db) {
         auto cursor = db["inventory"].find(make_document(kvp("tags", make_array("red", "blank"))));
         // End Example 21
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 21");
+        }
     }
 
     {
@@ -365,7 +426,9 @@ void query_arrays_examples(mongocxx::database db) {
             make_document(kvp("tags", make_document(kvp("$all", make_array("red", "blank"))))));
         // End Example 22
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 4);
+        if (std::distance(cursor.begin(), cursor.end()) != 4) {
+            throw std::logic_error("wrong count in example 22");
+        }
     }
 
     {
@@ -376,7 +439,9 @@ void query_arrays_examples(mongocxx::database db) {
         auto cursor = db["inventory"].find(make_document(kvp("tags", "red")));
         // End Example 23
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 4);
+        if (std::distance(cursor.begin(), cursor.end()) != 4) {
+            throw std::logic_error("wrong count in example 23");
+        }
     }
 
     {
@@ -388,7 +453,9 @@ void query_arrays_examples(mongocxx::database db) {
             db["inventory"].find(make_document(kvp("dim_cm", make_document(kvp("$gt", 25)))));
         // End Example 24
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 24");
+        }
     }
 
     {
@@ -400,7 +467,9 @@ void query_arrays_examples(mongocxx::database db) {
             make_document(kvp("dim_cm", make_document(kvp("$gt", 15), kvp("$lt", 20)))));
         // End Example 25
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 4);
+        if (std::distance(cursor.begin(), cursor.end()) != 4) {
+            throw std::logic_error("wrong count in example 25");
+        }
     }
 
     {
@@ -413,7 +482,9 @@ void query_arrays_examples(mongocxx::database db) {
                 make_document(kvp("$elemMatch", make_document(kvp("$gt", 22), kvp("$lt", 30)))))));
         // End Example 26
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 26");
+        }
     }
 
     {
@@ -425,7 +496,9 @@ void query_arrays_examples(mongocxx::database db) {
             db["inventory"].find(make_document(kvp("dim_cm.1", make_document(kvp("$gt", 25)))));
         // End Example 27
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 27");
+        }
     }
 
     {
@@ -437,7 +510,9 @@ void query_arrays_examples(mongocxx::database db) {
             db["inventory"].find(make_document(kvp("tags", make_document(kvp("$size", 3)))));
         // End Example 28
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 28");
+        }
     }
 }
 
@@ -475,7 +550,9 @@ void query_array_embedded_documents_examples(mongocxx::database db) {
         db["inventory"].insert_many(docs);
         // End Example 29
 
-        assert(db["inventory"].count({}) == 5);
+        if (db["inventory"].count({}) != 5) {
+            throw std::logic_error("wrong count in example 29");
+        }
     }
 
     {
@@ -487,7 +564,9 @@ void query_array_embedded_documents_examples(mongocxx::database db) {
             make_document(kvp("instock", make_document(kvp("warehouse", "A"), kvp("qty", 5)))));
         // End Example 30
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 30");
+        }
     }
 
     {
@@ -499,7 +578,9 @@ void query_array_embedded_documents_examples(mongocxx::database db) {
             make_document(kvp("instock", make_document(kvp("qty", 5), kvp("warehouse", "A")))));
         // End Example 31
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 0);
+        if (std::distance(cursor.begin(), cursor.end()) != 0) {
+            throw std::logic_error("wrong count in example 31");
+        }
     }
 
     {
@@ -511,7 +592,9 @@ void query_array_embedded_documents_examples(mongocxx::database db) {
             make_document(kvp("instock.0.qty", make_document(kvp("$lte", 20)))));
         // End Example 32
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 3);
+        if (std::distance(cursor.begin(), cursor.end()) != 3) {
+            throw std::logic_error("wrong count in example 32");
+        }
     }
 
     {
@@ -523,7 +606,9 @@ void query_array_embedded_documents_examples(mongocxx::database db) {
             db["inventory"].find(make_document(kvp("instock.qty", make_document(kvp("$lte", 20)))));
         // End Example 33
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 5);
+        if (std::distance(cursor.begin(), cursor.end()) != 5) {
+            throw std::logic_error("wrong count in example 33");
+        }
     }
 
     {
@@ -537,7 +622,9 @@ void query_array_embedded_documents_examples(mongocxx::database db) {
                     kvp("$elemMatch", make_document(kvp("qty", 5), kvp("warehouse", "A")))))));
         // End Example 34
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 34");
+        }
     }
 
     {
@@ -552,7 +639,9 @@ void query_array_embedded_documents_examples(mongocxx::database db) {
                     make_document(kvp("qty", make_document(kvp("$gt", 10), kvp("$lte", 20)))))))));
         // End Example 35
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 3);
+        if (std::distance(cursor.begin(), cursor.end()) != 3) {
+            throw std::logic_error("wrong count in example 35");
+        }
     }
 
     {
@@ -564,7 +653,9 @@ void query_array_embedded_documents_examples(mongocxx::database db) {
             make_document(kvp("instock.qty", make_document(kvp("$gt", 10), kvp("$lte", 20)))));
         // End Example 36
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 4);
+        if (std::distance(cursor.begin(), cursor.end()) != 4) {
+            throw std::logic_error("wrong count in example 36");
+        }
     }
 
     {
@@ -576,7 +667,9 @@ void query_array_embedded_documents_examples(mongocxx::database db) {
             make_document(kvp("instock.qty", 5), kvp("instock.warehouse", "A")));
         // End Example 37
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 2);
+        if (std::distance(cursor.begin(), cursor.end()) != 2) {
+            throw std::logic_error("wrong count in example 37");
+        }
     }
 }
 
@@ -596,7 +689,9 @@ void query_null_missing_fields_examples(mongocxx::database db) {
         db["inventory"].insert_many(docs);
         // End Example 38
 
-        assert(db["inventory"].count({}) == 2);
+        if (db["inventory"].count({}) != 2) {
+            throw std::logic_error("wrong count in example 38");
+        }
     }
 
     {
@@ -607,7 +702,9 @@ void query_null_missing_fields_examples(mongocxx::database db) {
         auto cursor = db["inventory"].find(make_document(kvp("item", bsoncxx::types::b_null{})));
         // End Example 39
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 2);
+        if (std::distance(cursor.begin(), cursor.end()) != 2) {
+            throw std::logic_error("wrong count in example 39");
+        }
     }
 
     {
@@ -619,7 +716,9 @@ void query_null_missing_fields_examples(mongocxx::database db) {
             db["inventory"].find(make_document(kvp("item", make_document(kvp("$type", 10)))));
         // End Example 40
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 40");
+        }
     }
 
     {
@@ -631,7 +730,9 @@ void query_null_missing_fields_examples(mongocxx::database db) {
             db["inventory"].find(make_document(kvp("item", make_document(kvp("$exists", false)))));
         // End Example 41
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 1);
+        if (std::distance(cursor.begin(), cursor.end()) != 1) {
+            throw std::logic_error("wrong count in example 41");
+        }
     }
 }
 
@@ -677,7 +778,9 @@ void projection_examples(mongocxx::database db) {
         db["inventory"].insert_many(docs);
         // End Example 42
 
-        assert(db["inventory"].count({}) == 5);
+        if (db["inventory"].count({}) != 5) {
+            throw std::logic_error("wrong count in example 42");
+        }
     }
 
     {
@@ -688,7 +791,9 @@ void projection_examples(mongocxx::database db) {
         auto cursor = db["inventory"].find(make_document(kvp("status", "A")));
         // End Example 43
 
-        assert(std::distance(cursor.begin(), cursor.end()) == 3);
+        if (std::distance(cursor.begin(), cursor.end()) != 3) {
+            throw std::logic_error("wrong count in example 43");
+        }
     }
 
     {
@@ -702,15 +807,11 @@ void projection_examples(mongocxx::database db) {
         // End Example 44
 
         for (auto&& document : cursor) {
-            // Assertions that pass are compiled to no-ops when compiled in release mode, so this is
-            // necessary to suppress the unused variable warning.
-            static_cast<void>(document);
-
-            assert(document["_id"]);
-            assert(document["item"]);
-            assert(document["status"]);
-            assert(!document["size"]);
-            assert(!document["instock"]);
+            check_has_field(document, "_id", 44);
+            check_has_field(document, "item", 44);
+            check_has_field(document, "status", 44);
+            check_has_no_field(document, "size", 44);
+            check_has_no_field(document, "instock", 44);
         }
     }
 
@@ -725,15 +826,11 @@ void projection_examples(mongocxx::database db) {
         // End Example 45
 
         for (auto&& document : cursor) {
-            // Assertions that pass are compiled to no-ops when compiled in release mode, so this is
-            // necessary to suppress the unused variable warning.
-            static_cast<void>(document);
-
-            assert(!document["_id"]);
-            assert(document["item"]);
-            assert(document["status"]);
-            assert(!document["size"]);
-            assert(!document["instock"]);
+            check_has_no_field(document, "_id", 45);
+            check_has_field(document, "item", 45);
+            check_has_field(document, "status", 45);
+            check_has_no_field(document, "size", 45);
+            check_has_no_field(document, "instock", 45);
         }
     }
 
@@ -748,15 +845,11 @@ void projection_examples(mongocxx::database db) {
         // End Example 46
 
         for (auto&& document : cursor) {
-            // Assertions that pass are compiled to no-ops when compiled in release mode, so this is
-            // necessary to suppress the unused variable warning.
-            static_cast<void>(document);
-
-            assert(document["_id"]);
-            assert(document["item"]);
-            assert(!document["status"]);
-            assert(document["size"]);
-            assert(!document["instock"]);
+            check_has_field(document, "_id", 46);
+            check_has_field(document, "item", 46);
+            check_has_no_field(document, "status", 46);
+            check_has_field(document, "size", 46);
+            check_has_no_field(document, "instock", 46);
         }
     }
 
@@ -772,21 +865,17 @@ void projection_examples(mongocxx::database db) {
         // End Example 47
 
         for (auto&& document : cursor) {
-            assert(document["_id"]);
-            assert(document["item"]);
-            assert(document["status"]);
-            assert(document["size"]);
-            assert(!document["instock"]);
+            check_has_field(document, "_id", 47);
+            check_has_field(document, "item", 47);
+            check_has_field(document, "status", 47);
+            check_has_field(document, "size", 47);
+            check_has_no_field(document, "instock", 47);
 
             auto size = document["size"].get_document().value;
 
-            // Assertions that pass are compiled to no-ops when compiled in release mode, so this is
-            // necessary to suppress the unused variable warning.
-            static_cast<void>(size);
-
-            assert(size["uom"]);
-            assert(!size["h"]);
-            assert(!size["w"]);
+            check_has_field(size, "uom", 47);
+            check_has_no_field(size, "h", 47);
+            check_has_no_field(size, "w", 47);
         }
     }
 
@@ -801,21 +890,17 @@ void projection_examples(mongocxx::database db) {
         // End Example 48
 
         for (auto&& document : cursor) {
-            assert(document["_id"]);
-            assert(document["item"]);
-            assert(document["status"]);
-            assert(document["size"]);
-            assert(document["instock"]);
+            check_has_field(document, "_id", 48);
+            check_has_field(document, "item", 48);
+            check_has_field(document, "status", 48);
+            check_has_field(document, "size", 48);
+            check_has_field(document, "instock", 48);
 
             auto size = document["size"].get_document().value;
 
-            // Assertions that pass are compiled to no-ops when compiled in release mode, so this is
-            // necessary to suppress the unused variable warning.
-            static_cast<void>(size);
-
-            assert(!size["uom"]);
-            assert(size["h"]);
-            assert(size["w"]);
+            check_has_no_field(size, "uom", 48);
+            check_has_field(size, "h", 48);
+            check_has_field(size, "w", 48);
         }
     }
 
@@ -831,21 +916,17 @@ void projection_examples(mongocxx::database db) {
         // End Example 49
 
         for (auto&& document : cursor) {
-            assert(document["_id"]);
-            assert(document["item"]);
-            assert(document["status"]);
-            assert(!document["size"]);
-            assert(document["instock"]);
+            check_has_field(document, "_id", 49);
+            check_has_field(document, "item", 49);
+            check_has_field(document, "status", 49);
+            check_has_no_field(document, "size", 49);
+            check_has_field(document, "instock", 49);
 
             auto instock = document["instock"].get_array().value;
 
             for (auto&& sub_document : instock) {
-                // Assertions that pass are compiled to no-ops when compiled in release mode, so
-                // this is necessary to suppress the unused variable warning.
-                static_cast<void>(sub_document);
-
-                assert(!sub_document["warehouse"]);
-                assert(sub_document["qty"]);
+                check_has_no_field(sub_document, "warehouse", 49);
+                check_has_field(sub_document, "qty", 49);
             }
         }
     }
@@ -863,19 +944,17 @@ void projection_examples(mongocxx::database db) {
         // End Example 50
 
         for (auto&& document : cursor) {
-            assert(document["_id"]);
-            assert(document["item"]);
-            assert(document["status"]);
-            assert(!document["size"]);
-            assert(document["instock"]);
+            check_has_field(document, "_id", 50);
+            check_has_field(document, "item", 50);
+            check_has_field(document, "status", 50);
+            check_has_no_field(document, "size", 50);
+            check_has_field(document, "instock", 50);
 
             auto instock = document["instock"].get_array().value;
 
-            // Assertions that pass are compiled to no-ops when compiled in release mode, so this is
-            // necessary to suppress the unused variable warning.
-            static_cast<void>(instock);
-
-            assert(std::distance(instock.begin(), instock.end()) == 1);
+            if (std::distance(instock.begin(), instock.end()) != 1) {
+                throw std::logic_error("wrong count in example 50");
+            }
         }
     }
 }
@@ -940,7 +1019,9 @@ void update_examples(mongocxx::database db) {
         db["inventory"].insert_many(docs);
         // End Example 51
 
-        assert(db["inventory"].count({}) == 10);
+        if (db["inventory"].count({}) != 10) {
+            throw std::logic_error("wrong count in example 51");
+        }
     }
 
     {
@@ -955,14 +1036,14 @@ void update_examples(mongocxx::database db) {
         // End Example 52
 
         for (auto&& document : db["inventory"].find(make_document(kvp("item", "paper")))) {
-            // Assertions that pass are compiled to no-ops when compiled in release mode, so this is
-            // necessary to suppress the unused variable warning.
-            static_cast<void>(document);
-
-            assert(document["size"].get_document().value["uom"].get_utf8().value ==
-                   bsoncxx::stdx::string_view{"cm"});
-            assert(document["status"].get_utf8().value == bsoncxx::stdx::string_view{"P"});
-            assert(document["lastModified"]);
+            if (document["size"].get_document().value["uom"].get_utf8().value !=
+                bsoncxx::stdx::string_view{"cm"}) {
+                throw std::logic_error("error in example 52");
+            }
+            if (document["status"].get_utf8().value != bsoncxx::stdx::string_view{"P"}) {
+                throw std::logic_error("error in example 52");
+            }
+            check_has_field(document, "lastModified", 52);
         }
     }
 
@@ -979,14 +1060,14 @@ void update_examples(mongocxx::database db) {
 
         for (auto&& document :
              db["inventory"].find(make_document(kvp("qty", make_document(kvp("$lt", 50)))))) {
-            // Assertions that pass are compiled to no-ops when compiled in release mode, so this is
-            // necessary to suppress the unused variable warning.
-            static_cast<void>(document);
-
-            assert(document["size"].get_document().value["uom"].get_utf8().value ==
-                   bsoncxx::stdx::string_view{"in"});
-            assert(document["status"].get_utf8().value == bsoncxx::stdx::string_view{"P"});
-            assert(document["lastModified"]);
+            if (document["size"].get_document().value["uom"].get_utf8().value !=
+                bsoncxx::stdx::string_view{"in"}) {
+                throw std::logic_error("error in example 53");
+            }
+            if (document["status"].get_utf8().value != bsoncxx::stdx::string_view{"P"}) {
+                throw std::logic_error("error in example 53");
+            }
+            check_has_field(document, "lastModified", 53);
         }
     }
 
@@ -1005,18 +1086,18 @@ void update_examples(mongocxx::database db) {
         // End Example 54
 
         for (auto&& document : db["inventory"].find(make_document(kvp("item", "paper")))) {
-            assert(std::distance(document.begin(), document.end()) == 3);
-            assert(document["_id"]);
-            assert(document["item"]);
-            assert(document["instock"]);
+            if (std::distance(document.begin(), document.end()) != 3) {
+                throw std::logic_error("wrong count in example 54");
+            }
+            check_has_field(document, "_id", 54);
+            check_has_field(document, "item", 54);
+            check_has_field(document, "instock", 54);
 
             auto instock = document["instock"].get_array().value;
 
-            // Assertions that pass are compiled to no-ops when compiled in release mode, so this is
-            // necessary to suppress the unused variable warning.
-            static_cast<void>(instock);
-
-            assert(std::distance(instock.begin(), instock.end()) == 2);
+            if (std::distance(instock.begin(), instock.end()) != 2) {
+                throw std::logic_error("wrong count in example 54");
+            }
         }
     }
 }
@@ -1057,7 +1138,9 @@ void delete_examples(mongocxx::database db) {
         db["inventory"].insert_many(docs);
         // End Example 55
 
-        assert(db["inventory"].count({}) == 5);
+        if (db["inventory"].count({}) != 5) {
+            throw std::logic_error("wrong count in example 55");
+        }
     }
 
     {
@@ -1068,7 +1151,9 @@ void delete_examples(mongocxx::database db) {
         db["inventory"].delete_many(make_document(kvp("status", "A")));
         // End Example 57
 
-        assert(db["inventory"].count({}) == 3);
+        if (db["inventory"].count({}) != 3) {
+            throw std::logic_error("wrong count in example 57");
+        }
     }
 
     {
@@ -1079,7 +1164,9 @@ void delete_examples(mongocxx::database db) {
         db["inventory"].delete_one(make_document(kvp("status", "D")));
         // End Example 58
 
-        assert(db["inventory"].count({}) == 2);
+        if (db["inventory"].count({}) != 2) {
+            throw std::logic_error("wrong count in example 58");
+        }
     }
 
     {
@@ -1087,7 +1174,9 @@ void delete_examples(mongocxx::database db) {
         db["inventory"].delete_many({});
         // End Example 56
 
-        assert(db["inventory"].count({}) == 0);
+        if (db["inventory"].count({}) != 0) {
+            throw std::logic_error("wrong count in example 56");
+        }
     }
 }
 
@@ -1100,13 +1189,18 @@ int main() {
     mongocxx::client conn{mongocxx::uri{}};
     auto db = conn["documentation_examples"];
 
-    insert_examples(db);
-    query_top_level_fields_examples(db);
-    query_embedded_documents_examples(db);
-    query_arrays_examples(db);
-    query_array_embedded_documents_examples(db);
-    query_null_missing_fields_examples(db);
-    projection_examples(db);
-    update_examples(db);
-    delete_examples(db);
+    try {
+        insert_examples(db);
+        query_top_level_fields_examples(db);
+        query_embedded_documents_examples(db);
+        query_arrays_examples(db);
+        query_array_embedded_documents_examples(db);
+        query_null_missing_fields_examples(db);
+        projection_examples(db);
+        update_examples(db);
+        delete_examples(db);
+    } catch (const std::logic_error& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 }

@@ -16,11 +16,12 @@
 
 #include <memory>
 
-#include <bsoncxx/string/view_or_value.hpp>
 #include <mongocxx/database.hpp>
 #include <mongocxx/options/client.hpp>
+#include <mongocxx/options/session.hpp>
 #include <mongocxx/read_concern.hpp>
 #include <mongocxx/read_preference.hpp>
+#include <mongocxx/session.hpp>
 #include <mongocxx/stdx.hpp>
 #include <mongocxx/uri.hpp>
 #include <mongocxx/write_concern.hpp>
@@ -32,6 +33,8 @@
 ///
 namespace mongocxx {
 MONGOCXX_INLINE_NAMESPACE_BEGIN
+
+class session;
 
 ///
 /// Class representing a client connection to MongoDB.
@@ -219,6 +222,17 @@ class MONGOCXX_API client {
     /// @see https://docs.mongodb.com/master/reference/command/listDatabases
     ///
     cursor list_databases() const;
+
+    ///
+    /// Create a session for a sequence of operations.
+    ///
+    /// @return A session object. See `mongocxx::session` for more information.
+    ///
+    /// @throws mongocxx::operation_exception if the driver is not built with crypto support, if
+    /// options is misconfigured, or if the session is configured with options that the server does
+    /// not support.
+    ///
+    session start_session(const options::session& options);
 
    private:
     friend class collection;

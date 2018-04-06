@@ -10,9 +10,10 @@ title = "Thread and fork safety"
 
 TLDR: **Always give each thread its own `mongocxx::client`**.
 
-In general each `mongocxx::client` object AND all of its child objects
-**should be used by a single thread at a time**. This is true even for
-clients acquired from a `mongocxx::pool`.
+In general each `mongocxx::client` object AND all of its child objects,
+including `mongocxx::session`, `mongocxx::database`, `mongocxx::collection`,
+and `mongocxx::cursor`, **should be used by a single thread at a time**. This
+is true even for clients acquired from a `mongocxx::pool`.
 
 Even if you create multiple child objects from a single `client`, and
 synchronize them individually, that is unsafe as they will concurrently
@@ -72,7 +73,7 @@ mongocxx::instance instance{};
 auto threadfunc = [](mongocxx::client& client, stdx::string_view dbname) {
     client[dbname]["col"].insert({});
 }
-// don't even bother sharing clients. Just give each thread its own,
+// don't even bother sharing clients. Just give each thread its own.
 std::thread([]() {
     mongocxx::client c{};
     threadfunc(c, "db1");
@@ -86,10 +87,10 @@ std::thread([]() {
 });
 ```
 
-In most programs, clients will be long lived - so its less of a hassle (and
-more performant) to make one per-thread. Obviously in this contrived
-example, there's quite a bit of overhead because we're doing so little work
-with each client - but in a real program this is the best solution.
+In most programs, clients will be long lived - so it is less of a hassle (and
+more performant) to make one per-thread. Obviously in this contrived example,
+there's quite a bit of overhead because we're doing so little work with each
+client - but in a real program this is the best solution.
 
 ## Fork safety
 

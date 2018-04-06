@@ -19,7 +19,7 @@ project(MONGOCXX)
 set(MONGOCXX_VERSION_MAJOR 3)
 set(MONGOCXX_VERSION_MINOR 3)
 set(MONGOCXX_VERSION_PATCH 0)
-set(MONGOCXX_VERSION_EXTRA "rc0-pre")
+set(MONGOCXX_VERSION_EXTRA "-rc0-pre")
 set(MONGOCXX_ABI_VERSION _noabi)
 
 option(MONGOCXX_ENABLE_SSL "Enable SSL - if the underlying C driver offers it" ON)
@@ -28,7 +28,7 @@ option(MONGOCXX_ENABLE_SLOW_TESTS "Run slow tests when invoking the the test tar
 set(MONGOCXX_VERSION_NO_EXTRA ${MONGOCXX_VERSION_MAJOR}.${MONGOCXX_VERSION_MINOR}.${MONGOCXX_VERSION_PATCH})
 set(MONGOCXX_VERSION ${MONGOCXX_VERSION_NO_EXTRA}${MONGOCXX_VERSION_EXTRA})
 set(MONGOCXX_INLINE_NAMESPACE "v${MONGOCXX_ABI_VERSION}")
-set(MONGOCXX_HEADER_INSTALL_DIR "include/mongocxx/${MONGOCXX_INLINE_NAMESPACE}" CACHE INTERNAL "")
+set(MONGOCXX_HEADER_INSTALL_DIR "${CMAKE_INSTALL_INCLUDEDIR}/mongocxx/${MONGOCXX_INLINE_NAMESPACE}" CACHE INTERNAL "")
 
 set(LIBMONGOC_REQUIRED_VERSION 1.9.2)
 set(LIBMONGOC_REQUIRED_ABI_VERSION 1.0)
@@ -93,6 +93,7 @@ set(mongocxx_sources
     options/modify_collection.cpp
     options/pool.cpp
     options/private/rewriter.cpp
+    options/session.cpp
     options/ssl.cpp
     options/update.cpp
     pipeline.cpp
@@ -109,6 +110,7 @@ set(mongocxx_sources
     result/insert_one.cpp
     result/replace_one.cpp
     result/update.cpp
+    session.cpp
     uri.cpp
     validation_criteria.cpp
     write_concern.cpp
@@ -206,13 +208,13 @@ install(FILES
 
 install(TARGETS
     mongocxx
-    RUNTIME DESTINATION bin COMPONENT runtime
-    LIBRARY DESTINATION lib COMPONENT runtime
-    ARCHIVE DESTINATION lib COMPONENT dev
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT runtime
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT dev
 )
 
 set(PACKAGE_INCLUDE_INSTALL_DIRS ${MONGOCXX_HEADER_INSTALL_DIR})
-set(PACKAGE_LIBRARY_INSTALL_DIRS lib)
+set(PACKAGE_LIBRARY_INSTALL_DIRS ${CMAKE_INSTALL_LIBDIR})
 set(PACKAGE_LIBRARIES mongocxx)
 
 include(CMakePackageConfigHelpers)
@@ -225,7 +227,7 @@ endif()
 
 configure_package_config_file(
   cmake/${PKG}-config.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/${PKG}-config.cmake
-  INSTALL_DESTINATION lib/cmake/${PKG}-${MONGOCXX_VERSION}
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PKG}-${MONGOCXX_VERSION}
   PATH_VARS PACKAGE_INCLUDE_INSTALL_DIRS PACKAGE_LIBRARY_INSTALL_DIRS
 )
 
@@ -237,7 +239,7 @@ write_basic_package_version_file(
 
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/${PKG}-config.cmake ${CMAKE_CURRENT_BINARY_DIR}/${PKG}-config-version.cmake
-  DESTINATION lib/cmake/${PKG}-${MONGOCXX_VERSION}
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PKG}-${MONGOCXX_VERSION}
 )
 
 add_subdirectory(test)

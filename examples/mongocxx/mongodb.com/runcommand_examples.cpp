@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cassert>
+#include <iostream>
 
 #include <bsoncxx/builder/basic/array.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -29,7 +29,9 @@ void runcommand_examples(mongocxx::database& db) {
         auto buildInfo = db.run_command(make_document(kvp("buildInfo", 1)));
         // End runCommand Example 1
 
-        assert(buildInfo.view()["ok"].get_double() == double{1});
+        if (buildInfo.view()["ok"].get_double() != double{1}) {
+            throw std::logic_error("buildInfo command failed in runCommand example 1");
+        }
     }
 
     {
@@ -43,7 +45,9 @@ void runcommand_examples(mongocxx::database& db) {
         auto buildInfo = db.run_command(make_document(kvp("collStats", "restaurants")));
         // End runCommand Example 1
 
-        assert(buildInfo.view()["ok"].get_double() == double{1});
+        if (buildInfo.view()["ok"].get_double() != double{1}) {
+            throw std::logic_error("buildInfo command failed in runCommand example 2");
+        }
     }
 }
 
@@ -55,7 +59,13 @@ int main() {
 
     const mongocxx::client conn{mongocxx::uri{}};
     auto db = conn["documentation_examples"];
-    runcommand_examples(db);
+
+    try {
+        runcommand_examples(db);
+    } catch (const std::logic_error& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }

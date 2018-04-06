@@ -12,20 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cassert>
+#include <iostream>
 #include <list>
 #include <numeric>
+#include <sstream>
 #include <vector>
 
 #include <bsoncxx/builder/basic/array.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
+#include <bsoncxx/string/to_string.hpp>
 #include <mongocxx/client.hpp>
+#include <mongocxx/exception/exception.hpp>
+#include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/instance.hpp>
 
 // NOTE: Any time this file is modified, a DOCS ticket should be opened to sync the changes with the
 // corresponding page on docs.mongodb.com. See CXX-1514, CXX-1249, and DRIVERS-356 for more info.
 
-void aggregation_examples(const mongocxx::database& db) {
+using namespace mongocxx;
+
+std::string get_server_version(const client& client) {
+    bsoncxx::builder::basic::document server_status{};
+    server_status.append(bsoncxx::builder::basic::kvp("serverStatus", 1));
+    bsoncxx::document::value output = client["test"].run_command(server_status.extract());
+
+    return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
+}
+
+void aggregation_examples(const mongocxx::client& client, const mongocxx::database& db) {
     {
         // Start Aggregation Example 1
         using namespace bsoncxx::builder::basic;
@@ -38,7 +52,9 @@ void aggregation_examples(const mongocxx::database& db) {
         // End Aggregation Example 1
 
         auto count = std::distance(cursor.begin(), cursor.end());
-        assert(count == 0L);
+        if (count != 0L) {
+            throw std::logic_error("wrong count in example 1");
+        }
     }
 
     {
@@ -59,7 +75,9 @@ void aggregation_examples(const mongocxx::database& db) {
         // End Aggregation Example 2
 
         auto count = std::distance(cursor.begin(), cursor.end());
-        assert(count == 0L);
+        if (count != 0L) {
+            throw std::logic_error("wrong count in example 2");
+        }
     }
 
     {
@@ -91,7 +109,9 @@ void aggregation_examples(const mongocxx::database& db) {
         // End Aggregation Example 3
 
         auto count = std::distance(cursor.begin(), cursor.end());
-        assert(count == 0L);
+        if (count != 0L) {
+            throw std::logic_error("wrong count in example 3");
+        }
     }
 
     {
@@ -124,8 +144,14 @@ void aggregation_examples(const mongocxx::database& db) {
         auto cursor = db["air_alliances"].aggregate(p, mongocxx::options::aggregate{});
         // End Aggregation Example 4
 
-        auto count = std::distance(cursor.begin(), cursor.end());
-        assert(count == 0L);
+        // Bit of a hack for now since CI tooling runs an older version of mongo
+        // than this example requires.
+        if (get_server_version(client) >= "3.6" ) {
+            auto count = std::distance(cursor.begin(), cursor.end());
+            if (count != 0L) {
+                throw std::logic_error("wrong count in example 4");
+            }
+        }
     }
 }
 
@@ -137,7 +163,13 @@ int main() {
 
     const mongocxx::client conn{mongocxx::uri{}};
     auto const db = conn["documentation_examples"];
-    aggregation_examples(db);
+
+    try {
+        aggregation_examples(conn, db);
+    } catch (const std::logic_error& e) {
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }
