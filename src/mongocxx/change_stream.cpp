@@ -64,7 +64,7 @@ change_stream::iterator change_stream::end() {
 
 // void* since we don't leak C driver defs into C++ driver
 change_stream::change_stream(void* change_stream_ptr)
-: _impl(stdx::make_unique<impl>(*static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
+    : _impl(stdx::make_unique<impl>(*static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
 
 change_stream::iterator::iterator() : change_stream::iterator::iterator{nullptr} {}
 
@@ -112,7 +112,6 @@ bool change_stream::iterator::is_exhausted() const {
     // or if the underlying _change_stream is marked exhausted.
     return !_change_stream || _change_stream->_impl->is_exhausted();
 }
-
 
 MONGOCXX_INLINE_NAMESPACE_END
 }  // namespace mongocxx

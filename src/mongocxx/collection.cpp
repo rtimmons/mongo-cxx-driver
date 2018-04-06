@@ -137,7 +137,6 @@ guard<T> make_guard(T&& t) {
     return guard<T>{std::forward<T>(t)};
 }
 
-
 // TODO: Consider extending the builders to directly accept optional values.
 template <typename T>
 inline void append_if(bsoncxx::builder::basic::document& doc,
@@ -968,7 +967,6 @@ class write_concern collection::write_concern() const {
         libmongoc::collection_get_write_concern(_get_impl().collection_t))));
     return wc;
 }
-
 
 class change_stream collection::watch(const options::change_stream& options) {
     return watch(pipeline{}, options);

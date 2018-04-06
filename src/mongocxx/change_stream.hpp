@@ -88,7 +88,6 @@ class MONGOCXX_API change_stream {
 
 class MONGOCXX_API change_stream::iterator {
    public:
-
     // Support input-iterator (caveat of post-increment returning void)
     using difference_type = long;
     using value_type = const bsoncxx::document::view;

@@ -42,7 +42,7 @@ class change_stream::impl {
     void operator=(impl&&) = delete;
 
     ~impl() {
-        mongoc_change_stream_t *s = &this->change_stream_;
+        mongoc_change_stream_t* s = &this->change_stream_;
         libmongoc::change_stream_destroy(s);
     }
 
