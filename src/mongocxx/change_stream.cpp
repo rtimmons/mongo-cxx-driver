@@ -45,23 +45,11 @@ static_assert(std::is_class<change_stream::iterator::value_type>::value, "");
 static_assert(std::is_pointer<change_stream::iterator::pointer>::value, "");
 static_assert(std::is_reference<change_stream::iterator::reference>::value, "");
 
-// void* since we don't leak C driver defs into C++ driver
-change_stream::change_stream(void* change_stream_ptr)
-    : _impl(stdx::make_unique<impl>(*static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
-
 change_stream::change_stream(change_stream&&) noexcept = default;
+
 change_stream& change_stream::operator=(change_stream&&) noexcept = default;
 
 change_stream::~change_stream() = default;
-
-void change_stream::iterator::operator++(int) {
-    operator++();
-}
-
-change_stream::iterator& change_stream::iterator::operator++() {
-    _change_stream->_impl->advance_iterator();
-    return *this;
-}
 
 change_stream::iterator change_stream::begin() {
     if (_impl->is_dead()) {
@@ -74,7 +62,28 @@ change_stream::iterator change_stream::end() {
     return iterator{};
 }
 
+// void* since we don't leak C driver defs into C++ driver
+change_stream::change_stream(void* change_stream_ptr)
+: _impl(stdx::make_unique<impl>(*static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
+
 change_stream::iterator::iterator() : change_stream::iterator::iterator{nullptr} {}
+
+const bsoncxx::document::view& change_stream::iterator::operator*() const noexcept {
+    return _change_stream->_impl->doc();
+}
+
+const bsoncxx::document::view* change_stream::iterator::operator->() const noexcept {
+    return &_change_stream->_impl->doc();
+}
+
+change_stream::iterator& change_stream::iterator::operator++() {
+    _change_stream->_impl->advance_iterator();
+    return *this;
+}
+
+void change_stream::iterator::operator++(int) {
+    operator++();
+}
 
 change_stream::iterator::iterator(change_stream* change_stream) : _change_stream(change_stream) {
     if (!_change_stream || _change_stream->_impl->has_started()) {
@@ -84,20 +93,6 @@ change_stream::iterator::iterator(change_stream* change_stream) : _change_stream
     _change_stream->_impl->mark_started();
     // Advance to first event on begin() to keep operator*() state-machine-free.
     operator++();
-}
-
-bool change_stream::iterator::is_exhausted() const {
-    // An iterator is exhausted if it is the end-iterator (_change_stream == nullptr)
-    // or if the underlying _change_stream is marked exhausted.
-    return !_change_stream || _change_stream->_impl->is_exhausted();
-}
-
-const bsoncxx::document::view& change_stream::iterator::operator*() const noexcept {
-    return _change_stream->_impl->doc();
-}
-
-const bsoncxx::document::view* change_stream::iterator::operator->() const noexcept {
-    return &_change_stream->_impl->doc();
 }
 
 // Don't worry about the case of two iterators being created from
@@ -111,6 +106,13 @@ bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,
                               const change_stream::iterator& rhs) noexcept {
     return !(lhs == rhs);
 }
+
+bool change_stream::iterator::is_exhausted() const {
+    // An iterator is exhausted if it is the end-iterator (_change_stream == nullptr)
+    // or if the underlying _change_stream is marked exhausted.
+    return !_change_stream || _change_stream->_impl->is_exhausted();
+}
+
 
 MONGOCXX_INLINE_NAMESPACE_END
 }  // namespace mongocxx
