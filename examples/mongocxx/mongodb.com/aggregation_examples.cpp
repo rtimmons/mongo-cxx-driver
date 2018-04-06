@@ -15,6 +15,7 @@
 #include <iostream>
 #include <list>
 #include <numeric>
+#include <sstream>
 #include <vector>
 
 #include <bsoncxx/builder/basic/array.hpp>
@@ -24,7 +25,6 @@
 #include <mongocxx/exception/exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/instance.hpp>
-#include <sstream>
 
 // NOTE: Any time this file is modified, a DOCS ticket should be opened to sync the changes with the
 // corresponding page on docs.mongodb.com. See CXX-1514, CXX-1249, and DRIVERS-356 for more info.
