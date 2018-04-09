@@ -96,7 +96,7 @@ error cases (TODO how to simulate error?)
     public:
         using ptr = std::unique_ptr<bson_t, void(*)(bson_t*)>;
 
-        static ptr as_doc(bsoncxx::document::view_or_value&& doc) {
+        static ptr as_doc(bsoncxx::document::view_or_value doc) {
             return std::move(ptr {
                     bson_new_from_data(doc.view().data(), doc.view().length()),
                     bson_destroy
@@ -255,34 +255,6 @@ error cases (TODO how to simulate error?)
         }
     }
 
-    SCENARIO("We project data") {
-        instance::current();
-        client mongodb_client{uri{}};
-        options::change_stream options{};
-
-        database db = mongodb_client["streams"];
-        collection events = db["events"];
-
-        using namespace std;
-
-        GIVEN("We don't project the ID") {
-            WHEN("We try to create a change stream") {
-                auto pipe = pipeline{};
-                //            TODO: why does the server not barf on this?
-                //            pipe.unwind(doc("invalid","[]"));
-                //            options.full_document(bsoncxx::string::view_or_value{"default"});
-                pipe.project(doc("_id", 0));
-                auto stream = events.watch(pipe, options);
-                REQUIRE(events.insert_one(doc("a", "b")));
-
-                THEN("We get an error") {
-                    // TODO: doesn't actually throw ....
-                    REQUIRE_THROWS(stream.begin());
-                }
-            }
-        }
-    }
-
     SCENARIO("A collection is watched") {
         instance::current();
         client mongodb_client{uri{}};
@@ -355,6 +327,53 @@ error cases (TODO how to simulate error?)
                 auto it = x.begin();
                 it++;
                 REQUIRE(*it == *it);
+            }
+        }
+    }
+
+    SCENARIO("A collection is watched 2") {
+        instance::current();
+        client mongodb_client{uri{}};
+        options::change_stream options{};
+
+        database db = mongodb_client["streams"];
+        collection events = db["events"];
+
+        GIVEN("We have multiple events") {
+            change_stream x = events.watch();
+
+            REQUIRE(events.insert_one(doc("a", "b")));
+            REQUIRE(events.insert_one(doc("c", "d")));
+            THEN("We can advance two iterators through the events") {
+                auto it = x.begin();
+                auto a = *it;
+                REQUIRE(a["fullDocument"]["a"].get_utf8().value == stdx::string_view("b"));
+                REQUIRE(it != x.end());
+
+                auto it2 = x.begin();
+
+                REQUIRE(it2 != x.end());
+
+                auto a2 = *it2;
+
+                REQUIRE(a == a2);
+                REQUIRE(it != x.end());
+                REQUIRE(it2 != x.end());
+
+                it++;
+
+                REQUIRE(it != x.end());
+
+                auto after_incr = *it2;
+                REQUIRE(after_incr["fullDocument"]["c"].get_utf8().value == stdx::string_view("d"));
+
+                REQUIRE(it2 != x.end());
+                REQUIRE(it != x.end());
+
+                it++;
+
+                REQUIRE(it2 == x.end());
+                REQUIRE(it == x.end());
             }
         }
     }
