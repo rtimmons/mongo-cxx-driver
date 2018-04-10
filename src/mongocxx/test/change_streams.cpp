@@ -85,7 +85,7 @@ error cases (TODO how to simulate error?)
 /// E.g. doc("foo", 123) creates {"foo":123}
 ///
 template <typename T>
-inline bsoncxx::document::value doc(std::string key, T val) {
+bsoncxx::document::value doc(std::string key, T val) {
     bsoncxx::builder::basic::document out{};
     out.append(kvp(key, val));
     return std::move(out.extract());
@@ -323,21 +323,12 @@ SCENARIO("A collection is watched") {
             REQUIRE(*it == *it);
         }
     }
-}
-
-SCENARIO("A collection is watched 2") {
-    instance::current();
-    client mongodb_client{uri{}};
-    options::change_stream options{};
-
-    database db = mongodb_client["streams"];
-    collection events = db["events"];
 
     GIVEN("We have multiple events") {
         change_stream x = events.watch();
 
-        REQUIRE(events.insert_one(doc("a", "b")));
-        REQUIRE(events.insert_one(doc("c", "d")));
+        REQUIRE(events.insert_one(doc("a","b")));
+        REQUIRE(events.insert_one(doc("c","d")));
 
         THEN("A range-based for loop iterates twice") {
             int count = 0;
@@ -353,35 +344,21 @@ SCENARIO("A collection is watched 2") {
         }
 
         THEN("We can advance two iterators through the events") {
-            auto it = x.begin();
-            auto a = *it;
-            REQUIRE(a["fullDocument"]["a"].get_utf8().value == stdx::string_view("b"));
-            REQUIRE(it != x.end());
+            auto one = x.begin();
+            auto two = x.begin();
 
-            auto it2 = x.begin();
+            REQUIRE(one != x.end());
+            REQUIRE(two != x.end());
 
-            REQUIRE(it2 != x.end());
+            one++;
 
-            auto a2 = *it2;
+            REQUIRE(one != x.end());
+            REQUIRE(two != x.end());
 
-            REQUIRE(a == a2);
-            REQUIRE(it != x.end());
-            REQUIRE(it2 != x.end());
+            two++;
 
-            it++;
-
-            REQUIRE(it != x.end());
-
-            auto after_incr = *it2;
-            REQUIRE(after_incr["fullDocument"]["c"].get_utf8().value == stdx::string_view("d"));
-
-            REQUIRE(it2 != x.end());
-            REQUIRE(it != x.end());
-
-            it++;
-
-            REQUIRE(it2 == x.end());
-            REQUIRE(it == x.end());
+            REQUIRE(one == x.end());
+            REQUIRE(two == x.end());
         }
     }
 }
