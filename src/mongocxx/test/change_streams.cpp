@@ -344,6 +344,20 @@ error cases (TODO how to simulate error?)
 
             REQUIRE(events.insert_one(doc("a", "b")));
             REQUIRE(events.insert_one(doc("c", "d")));
+
+            THEN("A range-based for loop iterates twice") {
+                int count = 0;
+                for(const auto& v : x) {
+                    ++count;
+                }
+                REQUIRE(count == 2);
+            }
+
+            THEN("distance is two") {
+                auto dist = std::distance(x.begin(), x.end());
+                REQUIRE(dist == 2);
+            }
+
             THEN("We can advance two iterators through the events") {
                 auto it = x.begin();
                 auto a = *it;
