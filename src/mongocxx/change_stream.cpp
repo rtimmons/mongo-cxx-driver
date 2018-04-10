@@ -85,7 +85,8 @@ void change_stream::iterator::operator++(int) {
     operator++();
 }
 
-change_stream::iterator::iterator(const change_stream* change_stream) : _change_stream(change_stream) {
+change_stream::iterator::iterator(const change_stream* change_stream)
+    : _change_stream(change_stream) {
     if (!_change_stream || _change_stream->_impl->has_started()) {
         return;
     }
