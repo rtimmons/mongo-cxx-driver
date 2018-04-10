@@ -100,7 +100,7 @@ change_stream::iterator::iterator(const change_stream* change_stream)
 // different change_streams
 bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
                               const change_stream::iterator& rhs) noexcept {
-    return rhs.is_exhausted() && lhs.is_exhausted();
+    return rhs.is_exhausted() == lhs.is_exhausted();
 }
 
 bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,

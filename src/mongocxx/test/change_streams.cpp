@@ -257,7 +257,7 @@ SCENARIO("A collection is watched") {
     database db = mongodb_client["streams"];
     collection events = db["events"];
 
-    GIVEN("We have a default change stream") {
+    GIVEN("We have a default change stream and no events") {
         THEN("We can move-assign it") {
             change_stream stream = events.watch();
             change_stream move_copy = std::move(stream);
@@ -269,10 +269,22 @@ SCENARIO("A collection is watched") {
         THEN(".end == .end") {
             change_stream x = events.watch();
             REQUIRE(x.end() == x.end());
+
+            auto e = x.end();
+            REQUIRE(e == e);
         }
         THEN("We don't have any events") {
             change_stream x = events.watch();
             REQUIRE(x.begin() == x.end());
+
+            // a bit pedantic
+            auto b = x.begin();
+            REQUIRE(b == b);
+            auto e = x.end();
+            REQUIRE(e == e);
+
+            REQUIRE(e == b);
+            REQUIRE(b == e);
         }
         THEN("Empty iterator is equivalent to user-constructed iterator") {
             change_stream x = events.watch();
@@ -288,6 +300,17 @@ SCENARIO("A collection is watched") {
         THEN("We can receive an event") {
             auto it = *(x.begin());
             REQUIRE(it["fullDocument"]["a"].get_utf8().value == stdx::string_view("b"));
+        }
+
+        THEN("iterator equals itself") {
+            auto it = x.begin();
+            REQUIRE(it == it);
+
+            auto e = x.end();
+            REQUIRE(e == e);
+
+            REQUIRE(it != e);
+            REQUIRE(e != it);
         }
 
         THEN("We can deref iterator with value multiple times") {
@@ -324,6 +347,7 @@ SCENARIO("A collection is watched") {
         }
     }
 
+// TODO: test of non-existent collection
     GIVEN("We have multiple events") {
         change_stream x = events.watch();
 
@@ -378,6 +402,36 @@ SCENARIO("A collection is watched") {
             REQUIRE(events.insert_one(doc("e","f")));
             REQUIRE(std::distance(x.begin(), x.end()) == 1);
         }
+    }
+}
+SCENARIO("Copy and move a single-item iterator") {
+    instance::current();
+    client mongodb_client{uri{}};
+    options::change_stream options{};
+
+    database db = mongodb_client["streams"];
+    collection events = db["events"];
+
+    change_stream x = events.watch();
+    REQUIRE(events.insert_one(doc("a","b")));
+
+    THEN("We can copy- and move-assign iterators") {
+        auto one = x.begin();
+        REQUIRE(one != x.end());
+
+        auto two = one;
+        REQUIRE(two != x.end());
+
+        REQUIRE(one == two);
+        REQUIRE(two == one);
+
+        // move-assign
+        auto three = std::move(two);
+
+        REQUIRE(three != x.end());
+        REQUIRE(one == three);
+
+        // two is in moved-from state. Technically `three == two` but that's not required.
     }
 }
 
