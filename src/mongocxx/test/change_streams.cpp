@@ -361,6 +361,24 @@ SCENARIO("A collection is watched") {
             REQUIRE(two == x.end());
         }
     }
+
+    GIVEN("We have already advanced past the first set of events") {
+        change_stream x = events.watch();
+
+        REQUIRE(events.insert_one(doc("a","b")));
+        REQUIRE(events.insert_one(doc("c","d")));
+
+        REQUIRE(std::distance(x.begin(), x.end()) == 2);
+
+        WHEN("We try to look for more events") {
+            REQUIRE(x.begin() == x.end());
+        }
+
+        WHEN("There are more events we can find them") {
+            REQUIRE(events.insert_one(doc("e","f")));
+            REQUIRE(std::distance(x.begin(), x.end()) == 1);
+        }
+    }
 }
 
 TEST_CASE("Change Streams") {
