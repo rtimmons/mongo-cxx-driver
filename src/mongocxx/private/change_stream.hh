@@ -77,6 +77,7 @@ class change_stream::impl {
     void advance_iterator() {
         const bson_t* out;
 
+
         // Happy-case.
         if (libmongoc::change_stream_next(&this->change_stream_, &out)) {
             this->doc_ = bsoncxx::document::view{bson_get_data(out), out->len};

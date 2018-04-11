@@ -74,6 +74,11 @@ bsoncxx::document::value doc(std::string key, T val) {
     return std::move(out.extract());
 }
 
+// TODO: better name
+enum class resp {
+    doc, empty, error,
+};
+
 class response {
    public:
     using ptr = std::unique_ptr<bson_t, void (*)(bson_t*)>;
@@ -83,20 +88,24 @@ class response {
             ptr{bson_new_from_data(doc.view().data(), doc.view().length()), bson_destroy});
     }
 
-    response(bool next, bool error, bsoncxx::document::view_or_value&& doc)
-        : next_{next}, error_{error}, doc_{std::move(as_doc(std::move(doc)))} {}
+    response(resp r, bsoncxx::document::view_or_value&& doc)
+        : resp_{r}, doc_{std::move(as_doc(std::move(doc)))} {}
 
     response(response&& other)
-        : next_{other.next_}, error_{other.error_}, doc_{std::move(other.doc_)} {}
+        : resp_{other.resp_}, doc_{std::move(other.doc_)} {}
 
     response(const response& other) = delete;
 
     bool error() const {
-        return error_;
+        return resp_ == resp::error;
     }
 
     bool next() const {
-        return next_;
+        return resp_ == resp::doc;
+    }
+
+    bool empty() const {
+        return resp_ == resp::empty;
     }
 
     bson_t* bson() const {
@@ -104,8 +113,7 @@ class response {
     }
 
    private:
-    const bool next_;
-    const bool error_;
+    const resp resp_;
     ptr doc_;
 };
 
@@ -162,19 +170,33 @@ struct mock_stream_state {
     }
 
     bool next(mongoc_change_stream_t* stream, const bson_t** bson) {
-        const response& current = responses.at(position);
-        *bson = current.bson();
-        ++position;
-        return current.next();
+        auto& curr = current();
+        if (curr.next()) {
+            *bson = curr.bson();
+            ++position;
+            return true;
+        }
+        return curr.next();
     }
 
     bool error(const mongoc_change_stream_t* stream, bson_error_t* err, const bson_t** bson) {
-        const response& current = responses.at(position);
-        *bson = current.bson();
-        if (current.error()) {
+        auto& curr = current();
+        if (curr.error()) {
+            *bson = curr.bson();
             bson_set_error(err, MONGOC_ERROR_CURSOR, MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN, "expected error");
+            return true;
         }
-        return current.error();
+        if (curr.empty()) {
+            ++position;
+        }
+
+        return curr.error();
+    }
+
+    const response& current() {
+        // If fail here, not enough mocked state (i.e. error in the test setup).
+        REQUIRE(position < responses.size());
+        return responses.at(position);
     }
 
     void destroy(mongoc_change_stream_t* stream) {
@@ -213,40 +235,23 @@ SCENARIO("We have errors") {
     state.error_op(change_stream_error_document);
 
     WHEN("We have no errors and no mock events") {
-//        state.then(true, false, make_document(kvp("a", "b")));
-//        state.then(true, false, make_document(kvp("b", "c")));
-//        state.then(true, false, make_document(kvp("d", "e")));
-        state.then(false, false, make_document());
+        state.then(resp::empty, make_document());
+        state.then(resp::empty, make_document());
+        state.then(resp::empty, make_document());
+        state.then(resp::empty, make_document());
 
-        THEN("The distance is zero") {
+        THEN("The distance is zero repeatedly") {
+            // This is more of a test of the test / mock infrastructure but it's useful when changing that!
             auto stream = events.watch();
-            CAPTURE(distance(stream.begin(), stream.end()));
-            REQUIRE(false);
+            REQUIRE(distance(stream.begin(), stream.end()) == 0);
+            REQUIRE(distance(stream.begin(), stream.end()) == 0);
+
+            auto stream2 = events.watch();
+            REQUIRE(distance(stream2.begin(), stream.end()) == 0);
+            REQUIRE(distance(stream2.begin(), stream.end()) == 0);
         }
     }
 
-
-//    WHEN("We watch") {
-//        THEN("There is an error") {
-//            auto stream = events.watch();
-//            change_stream::iterator it = stream.begin();
-//
-//            string json = bsoncxx::to_json(*it);
-//            CAPTURE(json);
-//            REQUIRE(it != stream.end());
-//
-//            change_stream::iterator it2 = stream.begin();
-//            string json2 = bsoncxx::to_json(*it);
-//            CAPTURE(json2);
-//
-//            it++;
-//
-//            CAPTURE(bsoncxx::to_json(*it));
-//            CAPTURE(bsoncxx::to_json(*it2));
-//
-//            REQUIRE(false);
-//        }
-//    }
 }
 
 SCENARIO("A collection is watched") {
