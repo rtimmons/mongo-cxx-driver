@@ -332,7 +332,7 @@ SCENARIO("Documentation Examples") {
 
     WHEN("Example 1") {
         change_stream stream = inventory.watch();
-        for(auto& event : stream) {
+        for (auto& event : stream) {
             std::cout << bsoncxx::to_json(event) << std::endl;
         }
     }
@@ -350,7 +350,7 @@ SCENARIO("Documentation Examples") {
         options::change_stream options;
         options.full_document(bsoncxx::string::view_or_value{"updateLookup"});
         change_stream stream = inventory.watch(options);
-        for(auto& event : stream) {
+        for (auto& event : stream) {
             std::cout << bsoncxx::to_json(event) << std::endl;
         }
     }
@@ -358,7 +358,7 @@ SCENARIO("Documentation Examples") {
     WHEN("Example 3") {
         stdx::optional<bsoncxx::document::view_or_value> resume_token;
         change_stream stream = inventory.watch();
-        for(auto& event : stream) {
+        for (auto& event : stream) {
             resume_token = bsoncxx::document::view_or_value{event["_id"].get_document()};
         }
 
@@ -366,7 +366,7 @@ SCENARIO("Documentation Examples") {
             options::change_stream options;
             options.resume_after(resume_token.value());
             change_stream resumed = inventory.watch(options);
-            for(auto& event : stream) {
+            for (auto& event : stream) {
                 std::cout << bsoncxx::to_json(event) << std::endl;
             }
         }
@@ -569,7 +569,6 @@ SCENARIO("A collection is watched") {
             auto n_events = std::distance(stream.begin(), stream.end());
             REQUIRE(n_events == 1);
         }
-
     }
 
     // Reset state. This should stay at the end of this SCENARIO block.
