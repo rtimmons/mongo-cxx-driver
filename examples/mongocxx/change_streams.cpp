@@ -18,6 +18,7 @@
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/json.hpp>
+#include <bsoncxx/string/to_string.hpp>
 #include <mongocxx/change_stream.hpp>
 #include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
@@ -25,6 +26,14 @@
 
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
+
+std::string get_server_version(const mongocxx::client& client) {
+    bsoncxx::builder::basic::document server_status{};
+    server_status.append(bsoncxx::builder::basic::kvp("serverStatus", 1));
+    bsoncxx::document::value output = client["test"].run_command(server_status.extract());
+
+    return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
+}
 
 int main(int, char**) {
     // The mongocxx::instance constructor and destructor initialize and shut down the driver,
@@ -34,6 +43,11 @@ int main(int, char**) {
     mongocxx::client conn{mongocxx::uri{}};
     auto coll = conn["test"]["coll"];
     coll.drop();
+
+    // Change streams require 3.6
+    if (get_server_version(conn) < "3.6") {
+        return 0;
+    }
 
     {
         // Iterate over empty change-stream (no events):
