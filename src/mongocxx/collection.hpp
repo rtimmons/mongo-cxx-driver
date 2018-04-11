@@ -766,6 +766,7 @@ class MONGOCXX_API collection {
 
     ///
     /// Gets a change stream on this collection with an empty pipeline.
+    /// Change streams are only supported with a "majority" read concern or no read concern.
     ///
     /// @param options
     ///   The options to use when creating the change stream.
@@ -777,14 +778,19 @@ class MONGOCXX_API collection {
 
     ///
     /// Gets a change stream on this collection.
+    /// Change streams are only supported with a "majority" read concern or no read concern.
     ///
     /// @param pipe
     ///   The aggregation pipeline to be used on the change notifications.
+    ///   Only a subset of pipeline operations are supported for change streams. For more information
+    ///   see the change streams documentation.
     /// @param options
     ///   The options to use when creating the change stream.
     ///
     /// @return
     ///  A change stream on this collection.
+    ///
+    /// @see https://docs.mongodb.com/manual/reference/method/db.collection.watch/index.html
     ///
     change_stream watch(const pipeline& pipe, const options::change_stream& options = {});
 
