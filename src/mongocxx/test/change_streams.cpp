@@ -94,7 +94,12 @@ class response {
     bool error() const {
         return error_;
     }
-    bson_t* bson() {
+
+    bool next() const {
+        return next_;
+    }
+
+    bson_t* bson() const {
         return doc_.get();
     }
 
@@ -109,6 +114,7 @@ struct mock_stream_state {
     unsigned long position;
 
     bool destroyed = false;
+    int watches = 0;
 
     mock_stream_state() : position{0}, responses{} {}
 
@@ -121,13 +127,6 @@ struct mock_stream_state {
     ~mock_stream_state() {
         REQUIRE(destroyed);
     }
-
-    //    template<typename... Args>
-    //    explicit mock_stream_state(Args&&... args)
-    //    : responses{std::forward<Args>(args)...}, position{0} {}
-
-    //    explicit mock_stream_state()
-    //    : mock_stream_state{{}} {}
 
     template <typename F>  // uref
     void next_op(F&& f) {
@@ -163,14 +162,19 @@ struct mock_stream_state {
     }
 
     bool next(mongoc_change_stream_t* stream, const bson_t** bson) {
-        response& current = responses.at(position);
+        const response& current = responses.at(position);
         *bson = current.bson();
         ++position;
-        return true;
+        return current.next();
     }
 
     bool error(const mongoc_change_stream_t* stream, bson_error_t* err, const bson_t** bson) {
-        return false;
+        const response& current = responses.at(position);
+        *bson = current.bson();
+        if (current.error()) {
+            bson_set_error(err, MONGOC_ERROR_CURSOR, MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN, "expected error");
+        }
+        return current.error();
     }
 
     void destroy(mongoc_change_stream_t* stream) {
@@ -180,6 +184,7 @@ struct mock_stream_state {
     mongoc_change_stream_t* watch(const mongoc_collection_t* coll,
                                   const bson_t* pipeline,
                                   const bson_t* opts) {
+        ++watches;
         return nullptr;
     }
 };
@@ -200,36 +205,48 @@ SCENARIO("We have errors") {
     using namespace std;
 
     mock_stream_state state;
-    state.then(true, false, make_document(kvp("a", "b")));
-    state.then(true, false, make_document(kvp("b", "c")));
-    state.then(true, false, make_document(kvp("d", "e")));
-
+    // Hook into c-lib mock functions.
+    // This can be done before the mock's script is established.
     state.watch_op(collection_watch);
     state.destroy_op(change_stream_destroy);
     state.next_op(change_stream_next);
     state.error_op(change_stream_error_document);
 
-    WHEN("We watch") {
-        THEN("There is an error") {
+    WHEN("We have no errors and no mock events") {
+//        state.then(true, false, make_document(kvp("a", "b")));
+//        state.then(true, false, make_document(kvp("b", "c")));
+//        state.then(true, false, make_document(kvp("d", "e")));
+        state.then(false, false, make_document());
+
+        THEN("The distance is zero") {
             auto stream = events.watch();
-            change_stream::iterator it = stream.begin();
-
-            string json = bsoncxx::to_json(*it);
-            CAPTURE(json);
-            REQUIRE(it != stream.end());
-
-            change_stream::iterator it2 = stream.begin();
-            string json2 = bsoncxx::to_json(*it);
-            CAPTURE(json2);
-
-            it++;
-
-            CAPTURE(bsoncxx::to_json(*it));
-            CAPTURE(bsoncxx::to_json(*it2));
-
+            CAPTURE(distance(stream.begin(), stream.end()));
             REQUIRE(false);
         }
     }
+
+
+//    WHEN("We watch") {
+//        THEN("There is an error") {
+//            auto stream = events.watch();
+//            change_stream::iterator it = stream.begin();
+//
+//            string json = bsoncxx::to_json(*it);
+//            CAPTURE(json);
+//            REQUIRE(it != stream.end());
+//
+//            change_stream::iterator it2 = stream.begin();
+//            string json2 = bsoncxx::to_json(*it);
+//            CAPTURE(json2);
+//
+//            it++;
+//
+//            CAPTURE(bsoncxx::to_json(*it));
+//            CAPTURE(bsoncxx::to_json(*it2));
+//
+//            REQUIRE(false);
+//        }
+//    }
 }
 
 SCENARIO("A collection is watched") {
