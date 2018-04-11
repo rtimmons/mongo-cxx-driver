@@ -53,24 +53,7 @@ using bsoncxx::builder::basic::make_document;
 
 using namespace mongocxx;
 /*
- * Test-cases:
-
-TODO Remaining:
-    call .begin() to resume
-    add range-based for usage
-    should we be using cbegin etc?
-    assert behavior of http://en.cppreference.com/w/cpp/concept/Iterator (mostly done?)
-    assert behavior of http://en.cppreference.com/w/cpp/concept/InputIterator
-    Do ^^ for cursor::iterator too or cut a CXX ticket for the same
-
-Done:
-    no pipeline
-    copy-construct
-    move-construct
-    no more data
-    multiple calls to begin()
-    .end() == .end()
-    user-constructed iterator == .end()
+Test-cases:
 
 error cases (TODO how to simulate error?)
     mal-formed pipeline (can't)
@@ -425,7 +408,7 @@ SCENARIO("Copy and move a single-item iterator") {
         REQUIRE(one == two);
         REQUIRE(two == one);
 
-        // move-assign
+        // move-assign (although it's trivially-copiable)
         auto three = std::move(two);
 
         REQUIRE(three != x.end());
