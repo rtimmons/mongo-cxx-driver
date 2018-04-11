@@ -65,7 +65,9 @@ bsoncxx::document::value doc(std::string key, T val) {
 }
 
 enum class response_type {
-    doc, empty, error,
+    doc,
+    empty,
+    error,
 };
 
 class response {
@@ -80,8 +82,7 @@ class response {
     response(response_type r, bsoncxx::document::view_or_value&& doc)
         : resp_{r}, doc_{std::move(as_doc(std::move(doc)))} {}
 
-    response(response&& other)
-        : resp_{other.resp_}, doc_{std::move(other.doc_)} {}
+    response(response&& other) : resp_{other.resp_}, doc_{std::move(other.doc_)} {}
 
     response(const response& other) = delete;
 
@@ -142,7 +143,10 @@ struct mock_stream_state {
         auto& curr = current();
         if (curr.error()) {
             *bson = curr.bson();
-            bson_set_error(err, MONGOC_ERROR_CURSOR, MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN, "expected error");
+            bson_set_error(err,
+                           MONGOC_ERROR_CURSOR,
+                           MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN,
+                           "expected error");
             return true;
         }
         if (curr.empty()) {
@@ -177,8 +181,8 @@ struct mock_stream_state {
     template <typename F>
     void next_op(F&& f) {
         f->interpose([&](mongoc_change_stream_t* stream, const bson_t** bson) -> bool {
-            return this->next(stream, bson);
-        }).forever();
+             return this->next(stream, bson);
+         }).forever();
     }
 
     template <typename F>
@@ -186,15 +190,15 @@ struct mock_stream_state {
         f->interpose([&](const mongoc_collection_t* coll,
                          const bson_t* pipeline,
                          const bson_t* opts) -> mongoc_change_stream_t* {
-            return this->watch(coll, pipeline, opts);
-        }).forever();
+             return this->watch(coll, pipeline, opts);
+         }).forever();
     }
 
     template <typename F>
     void destroy_op(F&& f) {
         f->interpose([&](mongoc_change_stream_t* stream) -> void {
-            return this->destroy(stream);
-        }).forever();
+             return this->destroy(stream);
+         }).forever();
     }
 
     template <typename F>
@@ -202,8 +206,8 @@ struct mock_stream_state {
         f->interpose([&](const mongoc_change_stream_t* stream,
                          bson_error_t* err,
                          const bson_t** bson) -> bool {
-            return this->error(stream, err, bson);
-        }).forever();
+             return this->error(stream, err, bson);
+         }).forever();
     }
 };
 
@@ -234,7 +238,8 @@ SCENARIO("Mock streams and error-handling") {
         state.then(response_type::empty, make_document());
 
         THEN("The distance is zero repeatedly") {
-            // This is more of a test of the test / mock infrastructure but it's useful when changing that!
+            // This is more of a test of the test / mock infrastructure but it's useful when
+            // changing that!
             auto stream = events.watch();
             REQUIRE(distance(stream.begin(), stream.end()) == 0);
             REQUIRE(distance(stream.begin(), stream.end()) == 0);
@@ -276,13 +281,13 @@ SCENARIO("Mock streams and error-handling") {
     }
 
     WHEN("We have one event and then an error") {
-        state.then(response_type::doc, make_document(kvp("some","event")));
+        state.then(response_type::doc, make_document(kvp("some", "event")));
         state.then(response_type::error, make_document());
         auto stream = events.watch();
 
         THEN("We can access a single event") {
             auto it = stream.begin();
-            REQUIRE(*it == make_document(kvp("some","event")).view());
+            REQUIRE(*it == make_document(kvp("some", "event")).view());
 
             THEN("We're not at end") {
                 REQUIRE(it != stream.end());
@@ -328,7 +333,7 @@ SCENARIO("A collection is watched") {
 
     THEN("We can copy- and move-assign iterators") {
         auto x = events.watch();
-        REQUIRE(events.insert_one(doc("a","b")));
+        REQUIRE(events.insert_one(doc("a", "b")));
 
         auto one = x.begin();
         REQUIRE(one != x.end());
@@ -441,8 +446,8 @@ SCENARIO("A collection is watched") {
     GIVEN("We have multiple events") {
         change_stream x = events.watch();
 
-        REQUIRE(events.insert_one(doc("a","b")));
-        REQUIRE(events.insert_one(doc("c","d")));
+        REQUIRE(events.insert_one(doc("a", "b")));
+        REQUIRE(events.insert_one(doc("c", "d")));
 
         THEN("A range-based for loop iterates twice") {
             int count = 0;
@@ -479,8 +484,8 @@ SCENARIO("A collection is watched") {
     GIVEN("We have already advanced past the first set of events") {
         change_stream x = events.watch();
 
-        REQUIRE(events.insert_one(doc("a","b")));
-        REQUIRE(events.insert_one(doc("c","d")));
+        REQUIRE(events.insert_one(doc("a", "b")));
+        REQUIRE(events.insert_one(doc("c", "d")));
 
         REQUIRE(std::distance(x.begin(), x.end()) == 2);
 
@@ -489,7 +494,7 @@ SCENARIO("A collection is watched") {
         }
 
         WHEN("There are more events we can find them") {
-            REQUIRE(events.insert_one(doc("e","f")));
+            REQUIRE(events.insert_one(doc("e", "f")));
             REQUIRE(std::distance(x.begin(), x.end()) == 1);
         }
     }
