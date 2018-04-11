@@ -782,8 +782,8 @@ class MONGOCXX_API collection {
     ///
     /// @param pipe
     ///   The aggregation pipeline to be used on the change notifications.
-    ///   Only a subset of pipeline operations are supported for change streams. For more information
-    ///   see the change streams documentation.
+    ///   Only a subset of pipeline operations are supported for change streams. For more
+    ///   information see the change streams documentation.
     /// @param options
     ///   The options to use when creating the change stream.
     ///

@@ -18,8 +18,8 @@
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/json.hpp>
-#include <mongocxx/client.hpp>
 #include <mongocxx/change_stream.hpp>
+#include <mongocxx/client.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/uri.hpp>
 
@@ -38,7 +38,7 @@ int main(int, char**) {
     {
         // Iterate over empty change-stream (no events):
         mongocxx::change_stream stream = coll.watch();
-        for(auto& event : stream) {
+        for (auto& event : stream) {
             std::cout << bsoncxx::to_json(event) << std::endl;
         }
     }
@@ -46,8 +46,8 @@ int main(int, char**) {
     {
         // Iterate over a stream with events:
         mongocxx::change_stream stream = coll.watch();
-        coll.insert_one(make_document(kvp("some","event")));
-        for(auto& event : stream) {
+        coll.insert_one(make_document(kvp("some", "event")));
+        for (auto& event : stream) {
             std::cout << bsoncxx::to_json(event) << std::endl;
         }
     }
@@ -60,15 +60,14 @@ int main(int, char**) {
         mongocxx::change_stream stream = coll.watch(opts);
 
         // create a document and then update it
-        coll.insert_one(make_document(kvp("_id", "one"), kvp("a","a")));
+        coll.insert_one(make_document(kvp("_id", "one"), kvp("a", "a")));
         coll.update_one(make_document(kvp("_id", "one")),
-                        make_document(kvp("$set", make_document(kvp("a","A")))));
+                        make_document(kvp("$set", make_document(kvp("a", "A")))));
         coll.delete_one(make_document(kvp("_id", "one")));
 
-        for(auto& event : stream) {
+        for (auto& event : stream) {
             // we only see the update, not the insert
             std::cout << "Received Document: " << bsoncxx::to_json(event) << std::endl;
         }
     }
-
 }
