@@ -1,0 +1,74 @@
+// Copyright 2018-present MongoDB Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <cstdlib>
+#include <iostream>
+
+#include <bsoncxx/builder/basic/document.hpp>
+#include <bsoncxx/builder/basic/kvp.hpp>
+#include <bsoncxx/json.hpp>
+#include <mongocxx/client.hpp>
+#include <mongocxx/change_stream.hpp>
+#include <mongocxx/instance.hpp>
+#include <mongocxx/uri.hpp>
+
+using bsoncxx::builder::basic::kvp;
+using bsoncxx::builder::basic::make_document;
+
+int main(int, char**) {
+    // The mongocxx::instance constructor and destructor initialize and shut down the driver,
+    // respectively. Therefore, a mongocxx::instance must be created before using the driver and
+    // must remain alive for as long as the driver is in use.
+    mongocxx::instance inst{};
+    mongocxx::client conn{mongocxx::uri{}};
+    auto coll = conn["test"]["coll"];
+    coll.drop();
+
+    {
+        // Iterate over empty change-stream (no events):
+        mongocxx::change_stream stream = coll.watch();
+        for(auto& event : stream) {
+            std::cout << bsoncxx::to_json(event) << std::endl;
+        }
+    }
+
+    {
+        // Iterate over a stream with events:
+        mongocxx::change_stream stream = coll.watch();
+        coll.insert_one(make_document(kvp("some","event")));
+        for(auto& event : stream) {
+            std::cout << bsoncxx::to_json(event) << std::endl;
+        }
+    }
+
+    {
+        // Get full doc and deltas
+        mongocxx::options::change_stream opts;
+        opts.full_document(bsoncxx::string::view_or_value{"updateLookup"});
+
+        mongocxx::change_stream stream = coll.watch(opts);
+
+        // create a document and then update it
+        coll.insert_one(make_document(kvp("_id", "one"), kvp("a","a")));
+        coll.update_one(make_document(kvp("_id", "one")),
+                        make_document(kvp("$set", make_document(kvp("a","A")))));
+        coll.delete_one(make_document(kvp("_id", "one")));
+
+        for(auto& event : stream) {
+            // we only see the update, not the insert
+            std::cout << "Received Document: " << bsoncxx::to_json(event) << std::endl;
+        }
+    }
+
+}
