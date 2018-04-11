@@ -499,6 +499,29 @@ SCENARIO("A collection is watched") {
         }
     }
 
+    GIVEN("We only want to see update operations") {
+        // Get full doc and deltas but only for updates
+        mongocxx::options::change_stream opts;
+        opts.full_document(bsoncxx::string::view_or_value{"updateLookup"});
+
+        mongocxx::pipeline pipeline;
+        pipeline.match(make_document(kvp("operationType", "update")));
+
+        mongocxx::change_stream stream = events.watch(pipeline, opts);
+
+        // create a document and then update it
+        events.insert_one(make_document(kvp("_id", "one"), kvp("a", "a")));
+        events.update_one(make_document(kvp("_id", "one")),
+                          make_document(kvp("$set", make_document(kvp("a", "A")))));
+        events.delete_one(make_document(kvp("_id", "one")));
+
+        THEN("We only see updates :)") {
+            auto n_events = std::distance(stream.begin(), stream.end());
+            REQUIRE(n_events == 1);
+        }
+
+    }
+
     // Reset state. This should stay at the end of this SCENARIO block.
     events.drop();
 }

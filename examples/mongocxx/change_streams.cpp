@@ -65,23 +65,4 @@ int main(int, char**) {
             std::cout << bsoncxx::to_json(event) << std::endl;
         }
     }
-
-    {
-        // Get full doc and deltas
-        mongocxx::options::change_stream opts;
-        opts.full_document(bsoncxx::string::view_or_value{"updateLookup"});
-
-        mongocxx::change_stream stream = coll.watch(opts);
-
-        // create a document and then update it
-        coll.insert_one(make_document(kvp("_id", "one"), kvp("a", "a")));
-        coll.update_one(make_document(kvp("_id", "one")),
-                        make_document(kvp("$set", make_document(kvp("a", "A")))));
-        coll.delete_one(make_document(kvp("_id", "one")));
-
-        for (auto& event : stream) {
-            // we only see the update, not the insert
-            std::cout << "Received Document: " << bsoncxx::to_json(event) << std::endl;
-        }
-    }
 }
