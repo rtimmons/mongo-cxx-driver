@@ -64,8 +64,7 @@ bsoncxx::document::value doc(std::string key, T val) {
     return std::move(out.extract());
 }
 
-// TODO: better name
-enum class resp {
+enum class response_type {
     doc, empty, error,
 };
 
@@ -78,7 +77,7 @@ class response {
             ptr{bson_new_from_data(doc.view().data(), doc.view().length()), bson_destroy});
     }
 
-    response(resp r, bsoncxx::document::view_or_value&& doc)
+    response(response_type r, bsoncxx::document::view_or_value&& doc)
         : resp_{r}, doc_{std::move(as_doc(std::move(doc)))} {}
 
     response(response&& other)
@@ -87,15 +86,15 @@ class response {
     response(const response& other) = delete;
 
     bool error() const {
-        return resp_ == resp::error;
+        return resp_ == response_type::error;
     }
 
     bool next() const {
-        return resp_ == resp::doc;
+        return resp_ == response_type::doc;
     }
 
     bool empty() const {
-        return resp_ == resp::empty;
+        return resp_ == response_type::empty;
     }
 
     bson_t* bson() const {
@@ -103,7 +102,7 @@ class response {
     }
 
    private:
-    const resp resp_;
+    const response_type resp_;
     ptr doc_;
 };
 
@@ -127,41 +126,6 @@ struct mock_stream_state {
 
     ~mock_stream_state() {
         REQUIRE(destroyed);
-    }
-
-    // TODO: move _op methods to bottom
-
-    template <typename F>  // uref
-    void next_op(F&& f) {
-        f->interpose([&](mongoc_change_stream_t* stream, const bson_t** bson) -> bool {
-             return this->next(stream, bson);
-         }).forever();
-    }
-
-    template <typename F>
-    void watch_op(F&& f) {
-        // way to DRY this up?
-        f->interpose([&](const mongoc_collection_t* coll,
-                         const bson_t* pipeline,
-                         const bson_t* opts) -> mongoc_change_stream_t* {
-             return this->watch(coll, pipeline, opts);
-         }).forever();
-    }
-
-    template <typename F>
-    void destroy_op(F&& f) {
-        f->interpose([&](mongoc_change_stream_t* stream) -> void {
-             return this->destroy(stream);
-         }).forever();
-    }
-
-    template <typename F>
-    void error_op(F&& f) {
-        f->interpose([&](const mongoc_change_stream_t* stream,
-                         bson_error_t* err,
-                         const bson_t** bson) -> bool {
-             return this->error(stream, err, bson);
-         }).forever();
     }
 
     bool next(mongoc_change_stream_t* stream, const bson_t** bson) {
@@ -194,25 +158,6 @@ struct mock_stream_state {
         return responses.at(position);
     }
 
-    ///
-    /// Go back to beginning of script.
-    ///
-    void reset() {
-        position = 0;
-    }
-
-
-    ///
-    /// Clear the script (no mock interactions expected)
-    /// TODO: remove?
-    ///
-    void clear() {
-        reset();
-        responses.clear();
-        destroyed = false;
-        watches = 0;
-    }
-
     void destroy(mongoc_change_stream_t* stream) {
         destroyed = true;
     }
@@ -223,10 +168,44 @@ struct mock_stream_state {
         ++watches;
         return nullptr;
     }
-};
 
-template <typename T>
-class TD;
+    //
+    // The _op methods below hook into c function mocks to call methods
+    // on this instance instead.
+    //
+
+    template <typename F>
+    void next_op(F&& f) {
+        f->interpose([&](mongoc_change_stream_t* stream, const bson_t** bson) -> bool {
+            return this->next(stream, bson);
+        }).forever();
+    }
+
+    template <typename F>
+    void watch_op(F&& f) {
+        f->interpose([&](const mongoc_collection_t* coll,
+                         const bson_t* pipeline,
+                         const bson_t* opts) -> mongoc_change_stream_t* {
+            return this->watch(coll, pipeline, opts);
+        }).forever();
+    }
+
+    template <typename F>
+    void destroy_op(F&& f) {
+        f->interpose([&](mongoc_change_stream_t* stream) -> void {
+            return this->destroy(stream);
+        }).forever();
+    }
+
+    template <typename F>
+    void error_op(F&& f) {
+        f->interpose([&](const mongoc_change_stream_t* stream,
+                         bson_error_t* err,
+                         const bson_t** bson) -> bool {
+            return this->error(stream, err, bson);
+        }).forever();
+    }
+};
 
 SCENARIO("We have errors") {
     MOCK_CHANGE_STREAM
@@ -249,10 +228,10 @@ SCENARIO("We have errors") {
     state.error_op(change_stream_error_document);
 
     WHEN("We have no errors and no mock events") {
-        state.then(resp::empty, make_document());
-        state.then(resp::empty, make_document());
-        state.then(resp::empty, make_document());
-        state.then(resp::empty, make_document());
+        state.then(response_type::empty, make_document());
+        state.then(response_type::empty, make_document());
+        state.then(response_type::empty, make_document());
+        state.then(response_type::empty, make_document());
 
         THEN("The distance is zero repeatedly") {
             // This is more of a test of the test / mock infrastructure but it's useful when changing that!
@@ -267,8 +246,8 @@ SCENARIO("We have errors") {
     }
 
     WHEN("We have one message") {
-        state.then(resp::doc, make_document(kvp("a", "b")));
-        state.then(resp::empty, make_document());
+        state.then(response_type::doc, make_document(kvp("a", "b")));
+        state.then(response_type::empty, make_document());
 
         THEN("The distance is one") {
             auto stream = events.watch();
@@ -277,7 +256,7 @@ SCENARIO("We have errors") {
     }
 
     WHEN("We have an error as the first interaction") {
-        state.then(resp::error, make_document());
+        state.then(response_type::error, make_document());
         auto stream = events.watch();
         THEN("We throw an exception when .begin()ing") {
             REQUIRE_THROWS(stream.begin());
@@ -297,8 +276,8 @@ SCENARIO("We have errors") {
     }
 
     WHEN("We have one event and then an error") {
-        state.then(resp::doc, make_document(kvp("some","event")));
-        state.then(resp::error, make_document());
+        state.then(response_type::doc, make_document(kvp("some","event")));
+        state.then(response_type::error, make_document());
         auto stream = events.watch();
 
         THEN("We can access a single event") {
@@ -509,35 +488,6 @@ SCENARIO("Copy and move a single-item iterator") {
 
         // two is in moved-from state. Technically `three == two` but that's not required.
     }
-}
-
-TEST_CASE("Change Streams") {
-    instance::current();
-
-    client mongodb_client{uri{}};
-    database db = mongodb_client["streams"];
-    collection events = db["events"];
-
-    options::change_stream options{};
-    options.max_await_time(std::chrono::milliseconds{50000});
-
-    change_stream stream = events.watch(options);
-
-    change_stream::iterator it = stream.begin();
-    change_stream::iterator it2 = it;
-    change_stream::iterator it3 = {std::move(it2)};
-
-    for (const auto& it : stream) {
-        printf("Got:  %s\n", bsoncxx::to_json(it).c_str());
-        std::cout << bsoncxx::to_json(it) << std::endl;
-    }
-
-    for (auto it = stream.begin(); it != stream.end(); ++it) {
-        printf("Got:  %s\n", bsoncxx::to_json(*it).c_str());
-        std::cout << bsoncxx::to_json(*it) << std::endl;
-    }
-
-    REQUIRE(events);
 }
 
 }  // namepsace
