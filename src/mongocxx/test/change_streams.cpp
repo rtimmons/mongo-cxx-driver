@@ -207,7 +207,7 @@ struct mock_stream_state {
     }
 };
 
-SCENARIO("We have errors") {
+SCENARIO("Mock streams and error-handling") {
     MOCK_CHANGE_STREAM
 
     instance::current();
@@ -301,7 +301,21 @@ SCENARIO("We have errors") {
             }
         }
     }
+}
 
+SCENARIO("A non-existent collection is watched") {
+    instance::current();
+    client mongodb_client{uri{}};
+    options::change_stream options{};
+
+    database db = mongodb_client["does_not_exist"];
+    collection events = db["does_not_exist"];
+    GIVEN("We try to watch it") {
+        THEN("We get an error") {
+            change_stream stream = events.watch();
+            REQUIRE_THROWS(stream.begin());
+        }
+    }
 }
 
 SCENARIO("A collection is watched") {
@@ -311,6 +325,28 @@ SCENARIO("A collection is watched") {
 
     database db = mongodb_client["streams"];
     collection events = db["events"];
+
+    THEN("We can copy- and move-assign iterators") {
+        auto x = events.watch();
+        REQUIRE(events.insert_one(doc("a","b")));
+
+        auto one = x.begin();
+        REQUIRE(one != x.end());
+
+        auto two = one;
+        REQUIRE(two != x.end());
+
+        REQUIRE(one == two);
+        REQUIRE(two == one);
+
+        // move-assign (although it's trivially-copiable)
+        auto three = std::move(two);
+
+        REQUIRE(three != x.end());
+        REQUIRE(one == three);
+
+        // two is in moved-from state. Technically `three == two` but that's not required.
+    }
 
     GIVEN("We have a default change stream and no events") {
         THEN("We can move-assign it") {
@@ -402,7 +438,6 @@ SCENARIO("A collection is watched") {
         }
     }
 
-// TODO: test of non-existent collection
     GIVEN("We have multiple events") {
         change_stream x = events.watch();
 
@@ -458,36 +493,9 @@ SCENARIO("A collection is watched") {
             REQUIRE(std::distance(x.begin(), x.end()) == 1);
         }
     }
-}
-SCENARIO("Copy and move a single-item iterator") {
-    instance::current();
-    client mongodb_client{uri{}};
-    options::change_stream options{};
 
-    database db = mongodb_client["streams"];
-    collection events = db["events"];
-
-    change_stream x = events.watch();
-    REQUIRE(events.insert_one(doc("a","b")));
-
-    THEN("We can copy- and move-assign iterators") {
-        auto one = x.begin();
-        REQUIRE(one != x.end());
-
-        auto two = one;
-        REQUIRE(two != x.end());
-
-        REQUIRE(one == two);
-        REQUIRE(two == one);
-
-        // move-assign (although it's trivially-copiable)
-        auto three = std::move(two);
-
-        REQUIRE(three != x.end());
-        REQUIRE(one == three);
-
-        // two is in moved-from state. Technically `three == two` but that's not required.
-    }
+    // Reset state. This should stay at the end of this SCENARIO block.
+    events.drop();
 }
 
 }  // namepsace
