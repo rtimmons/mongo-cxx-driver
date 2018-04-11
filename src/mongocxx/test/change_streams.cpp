@@ -323,6 +323,56 @@ SCENARIO("A non-existent collection is watched") {
     }
 }
 
+SCENARIO("Documentation Examples") {
+    instance::current();
+    client mongodb_client{uri{}};
+
+    database db = mongodb_client["streams"];
+    collection inventory = db["events"];
+
+    WHEN("Example 1") {
+        change_stream stream = inventory.watch();
+        for(auto& event : stream) {
+            std::cout << bsoncxx::to_json(event) << std::endl;
+        }
+    }
+
+    WHEN("Example 1, Version 2") {
+        change_stream stream = inventory.watch();
+        change_stream::iterator iterator = stream.begin();
+        // It is undefined to dereference .begin() when .begin() == .end()
+        if (iterator != stream.end()) {
+            bsoncxx::document::view event = *iterator;
+        }
+    }
+
+    WHEN("Example 2") {
+        options::change_stream options;
+        options.full_document(bsoncxx::string::view_or_value{"updateLookup"});
+        change_stream stream = inventory.watch(options);
+        for(auto& event : stream) {
+            std::cout << bsoncxx::to_json(event) << std::endl;
+        }
+    }
+
+    WHEN("Example 3") {
+        stdx::optional<bsoncxx::document::view_or_value> resume_token;
+        change_stream stream = inventory.watch();
+        for(auto& event : stream) {
+            resume_token = bsoncxx::document::view_or_value{event["_id"].get_document()};
+        }
+
+        if (resume_token) {
+            options::change_stream options;
+            options.resume_after(resume_token.value());
+            change_stream resumed = inventory.watch(options);
+            for(auto& event : stream) {
+                std::cout << bsoncxx::to_json(event) << std::endl;
+            }
+        }
+    }
+}
+
 SCENARIO("A collection is watched") {
     instance::current();
     client mongodb_client{uri{}};
