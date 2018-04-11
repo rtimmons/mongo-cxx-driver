@@ -52,16 +52,6 @@ using bsoncxx::builder::basic::make_array;
 using bsoncxx::builder::basic::make_document;
 
 using namespace mongocxx;
-/*
-Test-cases:
-
-error cases (TODO how to simulate error?)
-    mal-formed pipeline (can't)
-    error response -  with self.coll.watch([{'$project': {'_id': 0}}]) as change_stream
-    after error we don't hold onto last doc
-    calling .begin() after error doesn't crash
-    accessing the documenting with operator* and operator-> after an error doesn't crash
-*/
 
 ///
 /// Create a single-item document
@@ -117,6 +107,9 @@ class response {
     ptr doc_;
 };
 
+// This mock is a bit more complicated than it wants to be,
+// but it tries to be as close to the C driver's actual behavior
+// as possible.
 struct mock_stream_state {
     std::vector<response> responses;
     unsigned long position;
@@ -135,6 +128,8 @@ struct mock_stream_state {
     ~mock_stream_state() {
         REQUIRE(destroyed);
     }
+
+    // TODO: move _op methods to bottom
 
     template <typename F>  // uref
     void next_op(F&& f) {
@@ -199,6 +194,25 @@ struct mock_stream_state {
         return responses.at(position);
     }
 
+    ///
+    /// Go back to beginning of script.
+    ///
+    void reset() {
+        position = 0;
+    }
+
+
+    ///
+    /// Clear the script (no mock interactions expected)
+    /// TODO: remove?
+    ///
+    void clear() {
+        reset();
+        responses.clear();
+        destroyed = false;
+        watches = 0;
+    }
+
     void destroy(mongoc_change_stream_t* stream) {
         destroyed = true;
     }
@@ -249,6 +263,63 @@ SCENARIO("We have errors") {
             auto stream2 = events.watch();
             REQUIRE(distance(stream2.begin(), stream.end()) == 0);
             REQUIRE(distance(stream2.begin(), stream.end()) == 0);
+        }
+    }
+
+    WHEN("We have one message") {
+        state.then(resp::doc, make_document(kvp("a", "b")));
+        state.then(resp::empty, make_document());
+
+        THEN("The distance is one") {
+            auto stream = events.watch();
+            REQUIRE(distance(stream.begin(), stream.end()) == 1);
+        }
+    }
+
+    WHEN("We have an error as the first interaction") {
+        state.then(resp::error, make_document());
+        auto stream = events.watch();
+        THEN("We throw an exception when .begin()ing") {
+            REQUIRE_THROWS(stream.begin());
+            THEN("We repeatedly have zero items") {
+                // Don't require more mock steps because we reach a dead state internally
+                // and don't reach out to the C driver after we encounter an error.
+                REQUIRE(distance(stream.begin(), stream.end()) == 0);
+                REQUIRE(distance(stream.begin(), stream.end()) == 0);
+                REQUIRE(distance(stream.begin(), stream.end()) == 0);
+
+                // We also segfault on this, but it's undefined behavior that
+                // we are allowed to change in the future.
+                //     auto it = stream.begin();
+                //     *it;
+            }
+        }
+    }
+
+    WHEN("We have one event and then an error") {
+        state.then(resp::doc, make_document(kvp("some","event")));
+        state.then(resp::error, make_document());
+        auto stream = events.watch();
+
+        THEN("We can access a single event") {
+            auto it = stream.begin();
+            REQUIRE(*it == make_document(kvp("some","event")).view());
+
+            THEN("We're not at end") {
+                REQUIRE(it != stream.end());
+            }
+
+            THEN("We throw on subsequent increment") {
+                REQUIRE_THROWS(it++);
+                REQUIRE(it == stream.end());
+
+                // Debatable if we want to require this behavior since it's
+                // inconsistent with other cases of dereferencing something
+                // that's == end(). Important thing is that we don't maintain
+                // a handle on the previous event.
+                REQUIRE(*it == make_document().view());
+                REQUIRE(*it == make_document().view());
+            }
         }
     }
 
