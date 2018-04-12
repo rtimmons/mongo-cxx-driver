@@ -12,35 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <atomic>
-#include <chrono>
 #include <iostream>
-#include <list>
-#include <queue>
-#include <thread>
-#include <vector>
 
 #include <bson.h>
 #include <bsoncxx/builder/basic/document.hpp>
-#include <bsoncxx/json.hpp>
-#include <bsoncxx/stdx/make_unique.hpp>
-#include <bsoncxx/stdx/string_view.hpp>
-#include <bsoncxx/string/to_string.hpp>
 #include <bsoncxx/test_util/catch.hh>
-#include <bsoncxx/types.hpp>
 #include <mongocxx/client.hpp>
 #include <mongocxx/collection.hpp>
-#include <mongocxx/exception/bulk_write_exception.hpp>
-#include <mongocxx/exception/logic_error.hpp>
-#include <mongocxx/exception/operation_exception.hpp>
-#include <mongocxx/exception/query_exception.hpp>
-#include <mongocxx/exception/write_exception.hpp>
 #include <mongocxx/instance.hpp>
 #include <mongocxx/pipeline.hpp>
-#include <mongocxx/private/libbson.hh>
-#include <mongocxx/read_concern.hpp>
-#include <mongocxx/test_util/client_helpers.hh>
-#include <mongocxx/write_concern.hpp>
 
 #include <third_party/catch/include/helpers.hpp>
 
@@ -64,6 +44,41 @@ bsoncxx::document::value doc(std::string key, T val) {
     return std::move(out.extract());
 }
 
+///
+/// Generates lambda/interpose for change_stream_next
+///
+auto gen_next = [](bool has_next) {
+    return [=](mongoc_change_stream_t* stream, const bson_t** bson) mutable -> bool {
+        *bson = BCON_NEW("some", "doc");
+        return has_next;
+    };
+};
+
+///
+/// Generates lambda/interpose for change_stream_error_document
+///
+auto gen_error = [](bool has_error) {
+    return [=](const mongoc_change_stream_t* stream,
+               bson_error_t* err,
+               const bson_t** bson) -> bool {
+        if (has_error) {
+            bson_set_error(err, MONGOC_ERROR_CURSOR, MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN, "expected error");
+            *bson = BCON_NEW("from", "gen_error"); // different from what's in gen_next
+        }
+        return has_error;
+    };
+};
+
+
+auto watch_interpose = [](const mongoc_collection_t* coll,
+                          const bson_t* pipeline,
+                          const bson_t* opts) -> mongoc_change_stream_t* {
+    return nullptr;
+};
+
+auto destroy_interpose = [](mongoc_change_stream_t* stream) -> void {};
+
+
 SCENARIO("Mock streams and error-handling") {
     MOCK_CHANGE_STREAM
 
@@ -74,57 +89,39 @@ SCENARIO("Mock streams and error-handling") {
     database db = mongodb_client["streams"];
     collection events = db["events"];
 
-    using namespace std;
-
     // nop watch and destroy
-    collection_watch->interpose([](const mongoc_collection_t* coll,
-                                   const bson_t* pipeline,
-                                   const bson_t* opts) -> mongoc_change_stream_t* {
-        return nullptr;
-    }).forever();
-    change_stream_destroy->interpose([](mongoc_change_stream_t* stream) -> void {}).forever();
-
-
-    auto gen_next = [](bool has_next) {
-        return [=](mongoc_change_stream_t* stream, const bson_t** bson) mutable -> bool {
-            *bson = BCON_NEW("some", "doc");
-            return has_next;
-        };
-    };
-
-    auto gen_error = [](bool has_error) {
-        return [=](const mongoc_change_stream_t* stream,
-                   bson_error_t* err,
-                   const bson_t** bson) -> bool {
-            if (has_error) {
-                bson_set_error(err, MONGOC_ERROR_CURSOR, MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN, "expected error");
-                *bson = BCON_NEW("from", "gen_error"); // different from what's in gen_next
-            }
-            return has_error;
-        };
-    };
+    collection_watch->interpose(watch_interpose).forever();
+    change_stream_destroy->interpose(destroy_interpose).forever();
 
     WHEN("We have one event and then an error") {
-
         auto stream = events.watch();
-        THEN("We can access a single event") {
-            change_stream_next->interpose(gen_next(true));
+        change_stream_next->interpose(gen_next(true));
+
+        THEN("We can access a single event.") {
             auto it = stream.begin();
             REQUIRE(*it == make_document(kvp("some", "doc")).view());
 
+            // next call indicates no next and no error
             change_stream_next->interpose(gen_next(false));
             change_stream_error_document->interpose(gen_error(true));
 
             THEN("We throw on subsequent increment") {
                 REQUIRE_THROWS(it++);
-                REQUIRE(it == stream.end());
 
-                // Debatable if we want to require this behavior since it's
-                // inconsistent with other cases of dereferencing something
-                // that's == end(). Important thing is that we don't maintain
-                // a handle on the previous event.
-                REQUIRE(*it == make_document().view());
-                REQUIRE(*it == make_document().view());
+                THEN("We're at the end") {
+                    REQUIRE(it == stream.end());
+                }
+                THEN("We remain at error state") {
+                    REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
+                    REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
+                }
+                THEN("We don't hold on to previous document") {
+                    // Debatable if we want to require this behavior since it's
+                    // inconsistent with other cases of dereferencing something
+                    // that's == end(). Important thing is that we don't maintain
+                    // a handle on the previous event.
+                    REQUIRE(*it == make_document().view());
+                }
             }
         }
     }
