@@ -47,6 +47,7 @@ bsoncxx::document::value doc(std::string key, T val) {
 ///
 /// Generates lambda/interpose for change_stream_next
 ///
+// phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the return-type is haunting
 auto gen_next = [](bool has_next) {
     return [=](mongoc_change_stream_t* stream, const bson_t** bson) mutable -> bool {
         *bson = BCON_NEW("some", "doc");
@@ -83,7 +84,6 @@ TEST_CASE("Mock streams and error-handling") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
-
     database db = mongodb_client["streams"];
     collection events = db["events"];
 
@@ -132,9 +132,10 @@ TEST_CASE("A non-existent collection is watched") {
 
     database db = mongodb_client["does_not_exist"];
     collection events = db["does_not_exist"];
+
     SECTION("We try to watch it") {
-        SECTION("We get an error") {
-            change_stream stream = events.watch();
+        change_stream stream = events.watch();
+        SECTION("We get an error on .begin") {
             REQUIRE_THROWS(stream.begin());
         }
     }
@@ -143,26 +144,25 @@ TEST_CASE("A non-existent collection is watched") {
 TEST_CASE("We give an invalid pipeline") {
     instance::current();
     client mongodb_client{uri{}};
-
+    options::change_stream options{};
     database db = mongodb_client["streams"];
     collection events = db["events"];
 
     pipeline p;
     p.match(make_document(kvp("$foo", -1)));
 
+    auto stream = events.watch(p);
+
     SECTION("An error is thrown on .begin() even if no events") {
-        auto stream = events.watch(p);
         REQUIRE_THROWS(stream.begin());
     }
     SECTION("After error, begin == end repeatedly") {
-        auto stream = events.watch(p);
         REQUIRE_THROWS(stream.begin());
         REQUIRE(stream.begin() == stream.end());
         REQUIRE(stream.begin() == stream.end());
         REQUIRE(stream.end() == stream.begin());
     }
     SECTION("No error on .end") {
-        auto stream = events.watch(p);
         REQUIRE(stream.end() == stream.end());
     }
 }
@@ -170,9 +170,11 @@ TEST_CASE("We give an invalid pipeline") {
 TEST_CASE("Documentation Examples") {
     instance::current();
     client mongodb_client{uri{}};
-
+    options::change_stream options{};
     database db = mongodb_client["streams"];
-    collection inventory = db["events"];
+    collection events = db["events"];
+
+    collection inventory = events; // doc examples use this name
 
     SECTION("Example 1") {
         change_stream stream = inventory.watch();
@@ -221,12 +223,12 @@ TEST_CASE("A collection is watched") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
-
     database db = mongodb_client["streams"];
     collection events = db["events"];
 
+    change_stream x = events.watch();
+
     SECTION("We can copy- and move-assign iterators") {
-        auto x = events.watch();
         REQUIRE(events.insert_one(doc("a", "b")));
 
         auto one = x.begin();
@@ -249,22 +251,18 @@ TEST_CASE("A collection is watched") {
 
     SECTION("We have a default change stream and no events") {
         SECTION("We can move-assign it") {
-            change_stream stream = events.watch();
-            change_stream move_copy = std::move(stream);
+            change_stream move_copy = std::move(x);
         }
         SECTION("We can move-construct it") {
-            change_stream stream = events.watch();
-            change_stream move_constructed = change_stream{std::move(stream)};
+            change_stream move_constructed = change_stream{std::move(x)};
         }
         SECTION(".end == .end") {
-            change_stream x = events.watch();
             REQUIRE(x.end() == x.end());
 
             auto e = x.end();
             REQUIRE(e == e);
         }
         SECTION("We don't have any events") {
-            change_stream x = events.watch();
             REQUIRE(x.begin() == x.end());
 
             // a bit pedantic
@@ -277,14 +275,12 @@ TEST_CASE("A collection is watched") {
             REQUIRE(b == e);
         }
         SECTION("Empty iterator is equivalent to user-constructed iterator") {
-            change_stream x = events.watch();
             REQUIRE(x.begin() == change_stream::iterator{});
             REQUIRE(x.end() == change_stream::iterator{});
         }
     }
 
     SECTION("We have a single event") {
-        change_stream x = events.watch();
         REQUIRE(events.insert_one(doc("a", "b")));
 
         SECTION("We can receive an event") {
@@ -338,8 +334,6 @@ TEST_CASE("A collection is watched") {
     }
 
     SECTION("We have multiple events") {
-        change_stream x = events.watch();
-
         REQUIRE(events.insert_one(doc("a", "b")));
         REQUIRE(events.insert_one(doc("c", "d")));
 
@@ -376,8 +370,6 @@ TEST_CASE("A collection is watched") {
     }
 
     SECTION("We have already advanced past the first set of events") {
-        change_stream x = events.watch();
-
         REQUIRE(events.insert_one(doc("a", "b")));
         REQUIRE(events.insert_one(doc("c", "d")));
 
@@ -414,9 +406,6 @@ TEST_CASE("A collection is watched") {
             REQUIRE(n_events == 1);
         }
     }
-
-    // Reset state. This should stay at the end of this TEST_CASE block.
-    events.drop();
 }
 
 }  // namepsace
