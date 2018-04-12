@@ -64,153 +64,6 @@ bsoncxx::document::value doc(std::string key, T val) {
     return std::move(out.extract());
 }
 
-enum class response_type {
-    doc,
-    empty,
-    error,
-};
-
-class response {
-   public:
-    using ptr = std::unique_ptr<bson_t, void (*)(bson_t*)>;
-
-    static ptr as_doc(bsoncxx::document::view_or_value doc) {
-        return std::move(
-            ptr{bson_new_from_data(doc.view().data(), doc.view().length()), bson_destroy});
-    }
-
-    response(response_type r, bsoncxx::document::view_or_value&& doc)
-        : resp_{r}, doc_{std::move(as_doc(std::move(doc)))} {}
-
-    response(response&& other) : resp_{other.resp_}, doc_{std::move(other.doc_)} {}
-
-    response(const response& other) = delete;
-
-    bool error() const {
-        return resp_ == response_type::error;
-    }
-
-    bool next() const {
-        return resp_ == response_type::doc;
-    }
-
-    bool empty() const {
-        return resp_ == response_type::empty;
-    }
-
-    bson_t* bson() const {
-        return doc_.get();
-    }
-
-   private:
-    const response_type resp_;
-    ptr doc_;
-};
-
-// This mock is a bit more complicated than it wants to be,
-// but it tries to be as close to the C driver's actual behavior
-// as possible.
-struct mock_stream_state {
-    std::vector<response> responses;
-    unsigned long position;
-
-    bool destroyed = false;
-    int watches = 0;
-
-    mock_stream_state() : position{0}, responses{} {}
-
-    template <typename... Args>
-    mock_stream_state& then(Args&&... args) {
-        responses.emplace_back(std::forward<Args>(args)...);
-        return *this;
-    }
-
-    ~mock_stream_state() {
-        REQUIRE(destroyed);
-    }
-
-    bool next(mongoc_change_stream_t* stream, const bson_t** bson) {
-        auto& curr = current();
-        if (curr.next()) {
-            *bson = curr.bson();
-            ++position;
-            return true;
-        }
-        return curr.next();
-    }
-
-    bool error(const mongoc_change_stream_t* stream, bson_error_t* err, const bson_t** bson) {
-        auto& curr = current();
-        if (curr.error()) {
-            *bson = curr.bson();
-            bson_set_error(err,
-                           MONGOC_ERROR_CURSOR,
-                           MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN,
-                           "expected error");
-            return true;
-        }
-        if (curr.empty()) {
-            ++position;
-        }
-
-        return curr.error();
-    }
-
-    const response& current() {
-        // If fail here, not enough mocked state (i.e. error in the test setup).
-        REQUIRE(position < responses.size());
-        return responses.at(position);
-    }
-
-    void destroy(mongoc_change_stream_t* stream) {
-        destroyed = true;
-    }
-
-    mongoc_change_stream_t* watch(const mongoc_collection_t* coll,
-                                  const bson_t* pipeline,
-                                  const bson_t* opts) {
-        ++watches;
-        return nullptr;
-    }
-
-    //
-    // The _op methods below hook into c function mocks to call methods
-    // on this instance instead.
-    //
-
-    template <typename F>
-    void next_op(F&& f) {
-        f->interpose([&](mongoc_change_stream_t* stream, const bson_t** bson) -> bool {
-             return this->next(stream, bson);
-         }).forever();
-    }
-
-    template <typename F>
-    void watch_op(F&& f) {
-        f->interpose([&](const mongoc_collection_t* coll,
-                         const bson_t* pipeline,
-                         const bson_t* opts) -> mongoc_change_stream_t* {
-             return this->watch(coll, pipeline, opts);
-         }).forever();
-    }
-
-    template <typename F>
-    void destroy_op(F&& f) {
-        f->interpose([&](mongoc_change_stream_t* stream) -> void {
-             return this->destroy(stream);
-         }).forever();
-    }
-
-    template <typename F>
-    void error_op(F&& f) {
-        f->interpose([&](const mongoc_change_stream_t* stream,
-                         bson_error_t* err,
-                         const bson_t** bson) -> bool {
-             return this->error(stream, err, bson);
-         }).forever();
-    }
-};
-
 SCENARIO("Mock streams and error-handling") {
     MOCK_CHANGE_STREAM
 
@@ -223,75 +76,44 @@ SCENARIO("Mock streams and error-handling") {
 
     using namespace std;
 
-    mock_stream_state state;
-    // Hook into c-lib mock functions.
-    // This can be done before the mock's script is established.
-    state.watch_op(collection_watch);
-    state.destroy_op(change_stream_destroy);
-    state.next_op(change_stream_next);
-    state.error_op(change_stream_error_document);
+    // nop watch and destroy
+    collection_watch->interpose([](const mongoc_collection_t* coll,
+                                   const bson_t* pipeline,
+                                   const bson_t* opts) -> mongoc_change_stream_t* {
+        return nullptr;
+    }).forever();
+    change_stream_destroy->interpose([](mongoc_change_stream_t* stream) -> void {}).forever();
 
-    WHEN("We have no errors and no mock events") {
-        state.then(response_type::empty, make_document());
-        state.then(response_type::empty, make_document());
-        state.then(response_type::empty, make_document());
-        state.then(response_type::empty, make_document());
 
-        THEN("The distance is zero repeatedly") {
-            // This is more of a test of the test / mock infrastructure but it's useful when
-            // changing that!
-            auto stream = events.watch();
-            REQUIRE(distance(stream.begin(), stream.end()) == 0);
-            REQUIRE(distance(stream.begin(), stream.end()) == 0);
+    auto gen_next = [](bool has_next) {
+        return [=](mongoc_change_stream_t* stream, const bson_t** bson) mutable -> bool {
+            *bson = BCON_NEW("some", "doc");
+            return has_next;
+        };
+    };
 
-            auto stream2 = events.watch();
-            REQUIRE(distance(stream2.begin(), stream.end()) == 0);
-            REQUIRE(distance(stream2.begin(), stream.end()) == 0);
-        }
-    }
-
-    WHEN("We have one message") {
-        state.then(response_type::doc, make_document(kvp("a", "b")));
-        state.then(response_type::empty, make_document());
-
-        THEN("The distance is one") {
-            auto stream = events.watch();
-            REQUIRE(distance(stream.begin(), stream.end()) == 1);
-        }
-    }
-
-    WHEN("We have an error as the first interaction") {
-        state.then(response_type::error, make_document());
-        auto stream = events.watch();
-        THEN("We throw an exception when .begin()ing") {
-            REQUIRE_THROWS(stream.begin());
-            THEN("We repeatedly have zero items") {
-                // Don't require more mock steps because we reach a dead state internally
-                // and don't reach out to the C driver after we encounter an error.
-                REQUIRE(distance(stream.begin(), stream.end()) == 0);
-                REQUIRE(distance(stream.begin(), stream.end()) == 0);
-                REQUIRE(distance(stream.begin(), stream.end()) == 0);
-
-                // We also segfault on this, but it's undefined behavior that
-                // we are allowed to change in the future.
-                //     auto it = stream.begin();
-                //     *it;
+    auto gen_error = [](bool has_error) {
+        return [=](const mongoc_change_stream_t* stream,
+                   bson_error_t* err,
+                   const bson_t** bson) -> bool {
+            if (has_error) {
+                bson_set_error(err, MONGOC_ERROR_CURSOR, MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN, "expected error");
+                *bson = BCON_NEW("from", "gen_error"); // different from what's in gen_next
             }
-        }
-    }
+            return has_error;
+        };
+    };
 
     WHEN("We have one event and then an error") {
-        state.then(response_type::doc, make_document(kvp("some", "event")));
-        state.then(response_type::error, make_document());
+
         auto stream = events.watch();
-
         THEN("We can access a single event") {
+            change_stream_next->interpose(gen_next(true));
             auto it = stream.begin();
-            REQUIRE(*it == make_document(kvp("some", "event")).view());
+            REQUIRE(*it == make_document(kvp("some", "doc")).view());
 
-            THEN("We're not at end") {
-                REQUIRE(it != stream.end());
-            }
+            change_stream_next->interpose(gen_next(false));
+            change_stream_error_document->interpose(gen_error(true));
 
             THEN("We throw on subsequent increment") {
                 REQUIRE_THROWS(it++);
