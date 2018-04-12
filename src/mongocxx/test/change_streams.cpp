@@ -58,26 +58,24 @@ auto gen_next = [](bool has_next) {
 /// Generates lambda/interpose for change_stream_error_document
 ///
 auto gen_error = [](bool has_error) {
-    return [=](const mongoc_change_stream_t* stream,
-               bson_error_t* err,
-               const bson_t** bson) -> bool {
-        if (has_error) {
-            bson_set_error(err, MONGOC_ERROR_CURSOR, MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN, "expected error");
-            *bson = BCON_NEW("from", "gen_error"); // different from what's in gen_next
-        }
-        return has_error;
-    };
+    return
+        [=](const mongoc_change_stream_t* stream, bson_error_t* err, const bson_t** bson) -> bool {
+            if (has_error) {
+                bson_set_error(err,
+                               MONGOC_ERROR_CURSOR,
+                               MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN,
+                               "expected error");
+                *bson = BCON_NEW("from", "gen_error");  // different from what's in gen_next
+            }
+            return has_error;
+        };
 };
-
 
 auto watch_interpose = [](const mongoc_collection_t* coll,
                           const bson_t* pipeline,
-                          const bson_t* opts) -> mongoc_change_stream_t* {
-    return nullptr;
-};
+                          const bson_t* opts) -> mongoc_change_stream_t* { return nullptr; };
 
 auto destroy_interpose = [](mongoc_change_stream_t* stream) -> void {};
-
 
 SCENARIO("Mock streams and error-handling") {
     MOCK_CHANGE_STREAM
@@ -150,7 +148,7 @@ TEST_CASE("We give an invalid pipeline") {
     collection events = db["events"];
 
     pipeline p;
-    p.match(make_document(kvp("$foo",-1)));
+    p.match(make_document(kvp("$foo", -1)));
 
     SECTION("An error is thrown on .begin() even if no events") {
         auto stream = events.watch(p);
