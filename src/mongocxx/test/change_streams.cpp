@@ -100,17 +100,45 @@ TEST_CASE("Mock streams and error-handling") {
         REQUIRE(*it == make_document(kvp("some", "doc")).view());
 
         SECTION("Then we have no events forever") {
-            // Mock no more events.
+            // Mock no more events fever.
             change_stream_next->interpose(gen_next(false)).forever();
             change_stream_error_document->interpose(gen_error(false)).forever();
-            // Advance past first event.
-            it++;
+            // We've reached end.
+            REQUIRE(++it == stream.end());
 
             SECTION("No error") {
                 REQUIRE(it == stream.end());
+                REQUIRE(++it == stream.end());
                 REQUIRE(*it == make_document().view());
             }
             SECTION("At end") {
+                REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
+            }
+        }
+
+        SECTION("Then no events for an iteration then an error") {
+            // Mock no more events for one pass.
+            change_stream_next->interpose(gen_next(false));
+            change_stream_error_document->interpose(gen_error(false));
+            // We've reached end.
+            REQUIRE(++it == stream.end());
+
+            // Mock an error
+            change_stream_next->interpose(gen_next(false)).forever();
+            change_stream_error_document->interpose(gen_error(true)).forever();
+            SECTION("Then throw on post-incr") {
+                REQUIRE_THROWS(it++);
+                REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
+            }
+            SECTION("Then throw on pre-incr") {
+                REQUIRE_THROWS(++it);
+                REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
+            }
+            SECTION("Then throw on .begin") {
+                REQUIRE_THROWS(stream.begin());
+
+                // Then nothing forever
+                REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
                 REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
             }
         }
