@@ -323,6 +323,33 @@ SCENARIO("A non-existent collection is watched") {
     }
 }
 
+TEST_CASE("We give an invalid pipeline") {
+    instance::current();
+    client mongodb_client{uri{}};
+
+    database db = mongodb_client["streams"];
+    collection events = db["events"];
+
+    pipeline p;
+    p.match(make_document(kvp("$foo",-1)));
+
+    SECTION("An error is thrown on .begin() even if no events") {
+        auto stream = events.watch(p);
+        REQUIRE_THROWS(stream.begin());
+    }
+    SECTION("After error, begin == end repeatedly") {
+        auto stream = events.watch(p);
+        REQUIRE_THROWS(stream.begin());
+        REQUIRE(stream.begin() == stream.end());
+        REQUIRE(stream.begin() == stream.end());
+        REQUIRE(stream.end() == stream.begin());
+    }
+    SECTION("No error on .end") {
+        auto stream = events.watch(p);
+        REQUIRE(stream.end() == stream.end());
+    }
+}
+
 SCENARIO("Documentation Examples") {
     instance::current();
     client mongodb_client{uri{}};
