@@ -50,7 +50,9 @@ bsoncxx::document::value doc(std::string key, T val) {
 // phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the return-type is haunting
 auto gen_next = [](bool has_next) {
     return [=](mongoc_change_stream_t* stream, const bson_t** bson) mutable -> bool {
-        *bson = BCON_NEW("some", "doc");
+        if (has_next) {
+            *bson = BCON_NEW("some", "doc");
+        }
         return has_next;
     };
 };
@@ -90,15 +92,30 @@ TEST_CASE("Mock streams and error-handling") {
     // nop watch and destroy
     collection_watch->interpose(watch_interpose).forever();
     change_stream_destroy->interpose(destroy_interpose).forever();
+    auto stream = events.watch();
 
-    SECTION("We have one event and then an error") {
-        auto stream = events.watch();
+    SECTION("We have one event") {
         change_stream_next->interpose(gen_next(true));
+        auto it = stream.begin();
+        REQUIRE(*it == make_document(kvp("some", "doc")).view());
 
-        SECTION("We can access a single event.") {
-            auto it = stream.begin();
-            REQUIRE(*it == make_document(kvp("some", "doc")).view());
+        SECTION("Then we have no events forever") {
+            // Mock no more events.
+            change_stream_next->interpose(gen_next(false)).forever();
+            change_stream_error_document->interpose(gen_error(false)).forever();
+            // Advance past first event.
+            it++;
 
+            SECTION("No error") {
+                REQUIRE(it == stream.end());
+                REQUIRE(*it == make_document().view());
+            }
+            SECTION("At end") {
+                REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
+            }
+        }
+
+        SECTION("Then we have an error") {
             // next call indicates no next and no error
             change_stream_next->interpose(gen_next(false));
             change_stream_error_document->interpose(gen_error(true));
@@ -240,7 +257,7 @@ TEST_CASE("A collection is watched") {
         REQUIRE(one == two);
         REQUIRE(two == one);
 
-        // move-assign (although it's trivially-copiable)
+        // move-assign (although it's trivially-copyable)
         auto three = std::move(two);
 
         REQUIRE(three != x.end());
@@ -278,6 +295,11 @@ TEST_CASE("A collection is watched") {
             REQUIRE(x.begin() == change_stream::iterator{});
             REQUIRE(x.end() == change_stream::iterator{});
         }
+    }
+
+    SECTION("We have no events") {
+        REQUIRE(std::distance(x.begin(), x.end()) == 0);
+        REQUIRE(std::distance(x.begin(), x.end()) == 0);
     }
 
     SECTION("We have a single event") {
