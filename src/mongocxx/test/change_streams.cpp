@@ -77,7 +77,7 @@ auto watch_interpose = [](const mongoc_collection_t* coll,
 
 auto destroy_interpose = [](mongoc_change_stream_t* stream) -> void {};
 
-SCENARIO("Mock streams and error-handling") {
+TEST_CASE("Mock streams and error-handling") {
     MOCK_CHANGE_STREAM
 
     instance::current();
@@ -91,11 +91,11 @@ SCENARIO("Mock streams and error-handling") {
     collection_watch->interpose(watch_interpose).forever();
     change_stream_destroy->interpose(destroy_interpose).forever();
 
-    WHEN("We have one event and then an error") {
+    SECTION("We have one event and then an error") {
         auto stream = events.watch();
         change_stream_next->interpose(gen_next(true));
 
-        THEN("We can access a single event.") {
+        SECTION("We can access a single event.") {
             auto it = stream.begin();
             REQUIRE(*it == make_document(kvp("some", "doc")).view());
 
@@ -103,17 +103,17 @@ SCENARIO("Mock streams and error-handling") {
             change_stream_next->interpose(gen_next(false));
             change_stream_error_document->interpose(gen_error(true));
 
-            THEN("We throw on subsequent increment") {
+            SECTION("We throw on subsequent increment") {
                 REQUIRE_THROWS(it++);
 
-                THEN("We're at the end") {
+                SECTION("We're at the end") {
                     REQUIRE(it == stream.end());
                 }
-                THEN("We remain at error state") {
+                SECTION("We remain at error state") {
                     REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
                     REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
                 }
-                THEN("We don't hold on to previous document") {
+                SECTION("We don't hold on to previous document") {
                     // Debatable if we want to require this behavior since it's
                     // inconsistent with other cases of dereferencing something
                     // that's == end(). Important thing is that we don't maintain
@@ -125,15 +125,15 @@ SCENARIO("Mock streams and error-handling") {
     }
 }
 
-SCENARIO("A non-existent collection is watched") {
+TEST_CASE("A non-existent collection is watched") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
 
     database db = mongodb_client["does_not_exist"];
     collection events = db["does_not_exist"];
-    GIVEN("We try to watch it") {
-        THEN("We get an error") {
+    SECTION("We try to watch it") {
+        SECTION("We get an error") {
             change_stream stream = events.watch();
             REQUIRE_THROWS(stream.begin());
         }
@@ -167,30 +167,30 @@ TEST_CASE("We give an invalid pipeline") {
     }
 }
 
-SCENARIO("Documentation Examples") {
+TEST_CASE("Documentation Examples") {
     instance::current();
     client mongodb_client{uri{}};
 
     database db = mongodb_client["streams"];
     collection inventory = db["events"];
 
-    WHEN("Example 1") {
+    SECTION("Example 1") {
         change_stream stream = inventory.watch();
         for (auto& event : stream) {
             std::cout << bsoncxx::to_json(event) << std::endl;
         }
     }
 
-    WHEN("Example 1, Version 2") {
+    SECTION("Example 1, Version 2") {
         change_stream stream = inventory.watch();
         change_stream::iterator iterator = stream.begin();
-        // It is undefined to dereference .begin() when .begin() == .end()
+        // It is undefined to dereference .begin() SECTION .begin() == .end()
         if (iterator != stream.end()) {
             bsoncxx::document::view event = *iterator;
         }
     }
 
-    WHEN("Example 2") {
+    SECTION("Example 2") {
         options::change_stream options;
         options.full_document(bsoncxx::string::view_or_value{"updateLookup"});
         change_stream stream = inventory.watch(options);
@@ -199,7 +199,7 @@ SCENARIO("Documentation Examples") {
         }
     }
 
-    WHEN("Example 3") {
+    SECTION("Example 3") {
         stdx::optional<bsoncxx::document::view_or_value> resume_token;
         change_stream stream = inventory.watch();
         for (auto& event : stream) {
@@ -217,7 +217,7 @@ SCENARIO("Documentation Examples") {
     }
 }
 
-SCENARIO("A collection is watched") {
+TEST_CASE("A collection is watched") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
@@ -225,7 +225,7 @@ SCENARIO("A collection is watched") {
     database db = mongodb_client["streams"];
     collection events = db["events"];
 
-    THEN("We can copy- and move-assign iterators") {
+    SECTION("We can copy- and move-assign iterators") {
         auto x = events.watch();
         REQUIRE(events.insert_one(doc("a", "b")));
 
@@ -247,23 +247,23 @@ SCENARIO("A collection is watched") {
         // two is in moved-from state. Technically `three == two` but that's not required.
     }
 
-    GIVEN("We have a default change stream and no events") {
-        THEN("We can move-assign it") {
+    SECTION("We have a default change stream and no events") {
+        SECTION("We can move-assign it") {
             change_stream stream = events.watch();
             change_stream move_copy = std::move(stream);
         }
-        THEN("We can move-construct it") {
+        SECTION("We can move-construct it") {
             change_stream stream = events.watch();
             change_stream move_constructed = change_stream{std::move(stream)};
         }
-        THEN(".end == .end") {
+        SECTION(".end == .end") {
             change_stream x = events.watch();
             REQUIRE(x.end() == x.end());
 
             auto e = x.end();
             REQUIRE(e == e);
         }
-        THEN("We don't have any events") {
+        SECTION("We don't have any events") {
             change_stream x = events.watch();
             REQUIRE(x.begin() == x.end());
 
@@ -276,23 +276,23 @@ SCENARIO("A collection is watched") {
             REQUIRE(e == b);
             REQUIRE(b == e);
         }
-        THEN("Empty iterator is equivalent to user-constructed iterator") {
+        SECTION("Empty iterator is equivalent to user-constructed iterator") {
             change_stream x = events.watch();
             REQUIRE(x.begin() == change_stream::iterator{});
             REQUIRE(x.end() == change_stream::iterator{});
         }
     }
 
-    GIVEN("We have a single event") {
+    SECTION("We have a single event") {
         change_stream x = events.watch();
         REQUIRE(events.insert_one(doc("a", "b")));
 
-        THEN("We can receive an event") {
+        SECTION("We can receive an event") {
             auto it = *(x.begin());
             REQUIRE(it["fullDocument"]["a"].get_utf8().value == stdx::string_view("b"));
         }
 
-        THEN("iterator equals itself") {
+        SECTION("iterator equals itself") {
             auto it = x.begin();
             REQUIRE(it == it);
 
@@ -303,7 +303,7 @@ SCENARIO("A collection is watched") {
             REQUIRE(e != it);
         }
 
-        THEN("We can deref iterator with value multiple times") {
+        SECTION("We can deref iterator with value multiple times") {
             auto it = x.begin();
             auto a = *it;
             auto b = *it;
@@ -311,39 +311,39 @@ SCENARIO("A collection is watched") {
             REQUIRE(b["fullDocument"]["a"].get_utf8().value == stdx::string_view("b"));
         }
 
-        THEN("Calling .begin multiple times doesn't advance state") {
+        SECTION("Calling .begin multiple times doesn't advance state") {
             auto a = *(x.begin());
             auto b = *(x.begin());
             REQUIRE(a == b);
         }
 
-        THEN("We have no more events after the first one") {
+        SECTION("We have no more events after the first one") {
             auto it = x.begin();
             it++;
             REQUIRE(it == x.end());
             REQUIRE(x.begin() == x.end());
         }
 
-        THEN("Past end is empty document") {
+        SECTION("Past end is empty document") {
             auto it = x.begin();
             it++;
             REQUIRE(*it == bsoncxx::builder::basic::document{});
         }
 
-        THEN("Can dereference end()") {
+        SECTION("Can dereference end()") {
             auto it = x.begin();
             it++;
             REQUIRE(*it == *it);
         }
     }
 
-    GIVEN("We have multiple events") {
+    SECTION("We have multiple events") {
         change_stream x = events.watch();
 
         REQUIRE(events.insert_one(doc("a", "b")));
         REQUIRE(events.insert_one(doc("c", "d")));
 
-        THEN("A range-based for loop iterates twice") {
+        SECTION("A range-based for loop iterates twice") {
             int count = 0;
             for (const auto& v : x) {
                 ++count;
@@ -351,12 +351,12 @@ SCENARIO("A collection is watched") {
             REQUIRE(count == 2);
         }
 
-        THEN("distance is two") {
+        SECTION("distance is two") {
             auto dist = std::distance(x.begin(), x.end());
             REQUIRE(dist == 2);
         }
 
-        THEN("We can advance two iterators through the events") {
+        SECTION("We can advance two iterators through the events") {
             auto one = x.begin();
             auto two = x.begin();
 
@@ -375,7 +375,7 @@ SCENARIO("A collection is watched") {
         }
     }
 
-    GIVEN("We have already advanced past the first set of events") {
+    SECTION("We have already advanced past the first set of events") {
         change_stream x = events.watch();
 
         REQUIRE(events.insert_one(doc("a", "b")));
@@ -383,17 +383,17 @@ SCENARIO("A collection is watched") {
 
         REQUIRE(std::distance(x.begin(), x.end()) == 2);
 
-        WHEN("We try to look for more events") {
+        SECTION("We try to look for more events") {
             REQUIRE(x.begin() == x.end());
         }
 
-        WHEN("There are more events we can find them") {
+        SECTION("There are more events we can find them") {
             REQUIRE(events.insert_one(doc("e", "f")));
             REQUIRE(std::distance(x.begin(), x.end()) == 1);
         }
     }
 
-    GIVEN("We only want to see update operations") {
+    SECTION("We only want to see update operations") {
         // Get full doc and deltas but only for updates
         mongocxx::options::change_stream opts;
         opts.full_document(bsoncxx::string::view_or_value{"updateLookup"});
@@ -409,13 +409,13 @@ SCENARIO("A collection is watched") {
                           make_document(kvp("$set", make_document(kvp("a", "A")))));
         events.delete_one(make_document(kvp("_id", "one")));
 
-        THEN("We only see updates :)") {
+        SECTION("We only see updates :)") {
             auto n_events = std::distance(stream.begin(), stream.end());
             REQUIRE(n_events == 1);
         }
     }
 
-    // Reset state. This should stay at the end of this SCENARIO block.
+    // Reset state. This should stay at the end of this TEST_CASE block.
     events.drop();
 }
 
