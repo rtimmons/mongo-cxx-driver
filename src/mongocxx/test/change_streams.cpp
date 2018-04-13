@@ -176,11 +176,11 @@ TEST_CASE("A non-existent collection is watched", "[min36]") {
     options::change_stream options{};
 
     database db = mongodb_client["does_not_exist"];
-    collection events = db["does_not_exist"];
+    collection dne = db["does_not_exist"];
 
     SECTION("We try to watch it") {
-        change_stream stream = events.watch();
-        SECTION("We get an error on .begin") {
+        change_stream stream = dne.watch();
+        SECTION("We get an error on .watch") {
             REQUIRE_THROWS(stream.begin());
         }
     }
