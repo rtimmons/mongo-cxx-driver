@@ -18,6 +18,7 @@
 #include <sstream>
 #include <vector>
 
+#include <get_server_version.h>
 #include <bsoncxx/builder/basic/array.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/string/to_string.hpp>
@@ -25,7 +26,6 @@
 #include <mongocxx/exception/exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/instance.hpp>
-#include <get_server_version.h>
 
 // NOTE: Any time this file is modified, a DOCS ticket should be opened to sync the changes with the
 // corresponding page on docs.mongodb.com. See CXX-1514, CXX-1249, and DRIVERS-356 for more info.

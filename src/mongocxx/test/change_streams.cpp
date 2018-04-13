@@ -47,7 +47,8 @@ bsoncxx::document::value doc(std::string key, T val) {
 ///
 /// Generates lambda/interpose for change_stream_next
 ///
-// phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the return-type is haunting
+// phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the
+// return-type is haunting
 auto gen_next = [](bool has_next) {
     return [=](mongoc_change_stream_t*, const bson_t** bson) mutable -> bool {
         if (has_next) {
@@ -61,24 +62,23 @@ auto gen_next = [](bool has_next) {
 /// Generates lambda/interpose for change_stream_error_document
 ///
 auto gen_error = [](bool has_error) {
-    return
-        [=](const mongoc_change_stream_t*, bson_error_t* err, const bson_t** bson) -> bool {
-            if (has_error) {
-                bson_set_error(err,
-                               MONGOC_ERROR_CURSOR,
-                               MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN,
-                               "expected error");
-                *bson = BCON_NEW("from", "gen_error");  // different from what's in gen_next
-            }
-            return has_error;
-        };
+    return [=](const mongoc_change_stream_t*, bson_error_t* err, const bson_t** bson) -> bool {
+        if (has_error) {
+            bson_set_error(err,
+                           MONGOC_ERROR_CURSOR,
+                           MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN,
+                           "expected error");
+            *bson = BCON_NEW("from", "gen_error");  // different from what's in gen_next
+        }
+        return has_error;
+    };
 };
 
 auto watch_interpose = [](const mongoc_collection_t*,
                           const bson_t*,
                           const bson_t*) -> mongoc_change_stream_t* { return nullptr; };
 
-auto destroy_interpose = [](mongoc_change_stream_t* stream) -> void {};
+auto destroy_interpose = [](mongoc_change_stream_t*) -> void {};
 
 TEST_CASE("Mock streams and error-handling") {
     MOCK_CHANGE_STREAM
@@ -193,9 +193,9 @@ TEST_CASE("Create streams.events and assert we can read a single event", "[min36
     collection events = mongodb_client["streams"]["events"];
     events.drop();
 
-    events.insert_one(make_document(kvp("dummy","doc")));
+    events.insert_one(make_document(kvp("dummy", "doc")));
     change_stream stream = events.watch();
-    events.insert_one(make_document(kvp("another","event")));
+    events.insert_one(make_document(kvp("another", "event")));
     REQUIRE(std::distance(stream.begin(), stream.end()) == 1);
 }
 
@@ -230,7 +230,7 @@ TEST_CASE("Documentation Examples", "[min36]") {
     options::change_stream options{};
     collection events = mongodb_client["streams"]["events"];
 
-    collection inventory = events; // doc examples use this name
+    collection inventory = events;  // doc examples use this name
 
     SECTION("Example 1") {
         change_stream stream = inventory.watch();

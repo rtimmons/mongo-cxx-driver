@@ -46,7 +46,7 @@ int main(int, char**) {
     coll.drop();
 
     // Dummy insert to create the database and collection.
-    coll.insert_one(make_document(kvp("dummy","document")));
+    coll.insert_one(make_document(kvp("dummy", "document")));
 
     {
         // Iterate over empty change-stream (no events):
@@ -70,9 +70,10 @@ int main(int, char**) {
         // Batch 100 events at a time and wait up to 1 second before polling again.
 
         // Configure appropriate values for your application:
-        const std::int32_t batch_size {100};
-        const std::chrono::milliseconds await_time {1000};
-        const mongocxx::stdx::optional<long> max_iterations = 1; // Use an empty optional for no max
+        const std::int32_t batch_size{100};
+        const std::chrono::milliseconds await_time{1000};
+        const mongocxx::stdx::optional<long> max_iterations =
+            1;  // Use an empty optional for no max
 
         mongocxx::options::change_stream options;
         options.batch_size(batch_size);
@@ -80,9 +81,9 @@ int main(int, char**) {
 
         mongocxx::change_stream stream = coll.watch(options);
         long iteration = 0;
-        while(!max_iterations || iteration++ < max_iterations) {
+        while (!max_iterations || iteration++ < max_iterations) {
             // Server errors propagate as exceptions and will cause our loop to exit.
-            for(const auto& event : stream) {
+            for (const auto& event : stream) {
                 std::cout << bsoncxx::to_json(event) << std::endl;
             }
         }
