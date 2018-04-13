@@ -25,19 +25,12 @@
 #include <mongocxx/exception/exception.hpp>
 #include <mongocxx/exception/logic_error.hpp>
 #include <mongocxx/instance.hpp>
+#include <get_server_version.h>
 
 // NOTE: Any time this file is modified, a DOCS ticket should be opened to sync the changes with the
 // corresponding page on docs.mongodb.com. See CXX-1514, CXX-1249, and DRIVERS-356 for more info.
 
 using namespace mongocxx;
-
-std::string get_server_version(const client& client) {
-    bsoncxx::builder::basic::document server_status{};
-    server_status.append(bsoncxx::builder::basic::kvp("serverStatus", 1));
-    bsoncxx::document::value output = client["test"].run_command(server_status.extract());
-
-    return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
-}
 
 void aggregation_examples(const mongocxx::client& client, const mongocxx::database& db) {
     {

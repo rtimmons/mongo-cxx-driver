@@ -24,16 +24,10 @@
 #include <mongocxx/instance.hpp>
 #include <mongocxx/uri.hpp>
 
+#include <get_server_version.h>
+
 using bsoncxx::builder::basic::kvp;
 using bsoncxx::builder::basic::make_document;
-
-std::string get_server_version(const mongocxx::client& client) {
-    bsoncxx::builder::basic::document server_status{};
-    server_status.append(bsoncxx::builder::basic::kvp("serverStatus", 1));
-    bsoncxx::document::value output = client["test"].run_command(server_status.extract());
-
-    return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
-}
 
 int main(int, char**) {
     // The mongocxx::instance constructor and destructor initialize and shut down the driver,
