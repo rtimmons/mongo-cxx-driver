@@ -186,12 +186,24 @@ TEST_CASE("A non-existent collection is watched", "[min36]") {
     }
 }
 
+// Put this before other tests which assume the collection already exists.
+TEST_CASE("Create streams.events and assert we can read a single event", "[min36]") {
+    instance::current();
+    client mongodb_client{uri{}};
+    collection events = mongodb_client["streams"]["events"];
+    events.drop();
+
+    events.insert_one(make_document(kvp("dummy","doc")));
+    change_stream stream = events.watch();
+    events.insert_one(make_document(kvp("another","event")));
+    REQUIRE(std::distance(stream.begin(), stream.end()) == 1);
+}
+
 TEST_CASE("We give an invalid pipeline", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
-    database db = mongodb_client["streams"];
-    collection events = db["events"];
+    collection events = mongodb_client["streams"]["events"];
 
     pipeline p;
     p.match(make_document(kvp("$foo", -1)));
@@ -216,8 +228,7 @@ TEST_CASE("Documentation Examples", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
-    database db = mongodb_client["streams"];
-    collection events = db["events"];
+    collection events = mongodb_client["streams"]["events"];
 
     collection inventory = events; // doc examples use this name
 
@@ -268,8 +279,7 @@ TEST_CASE("A collection is watched", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
-    database db = mongodb_client["streams"];
-    collection events = db["events"];
+    collection events = mongodb_client["streams"]["events"];
 
     change_stream x = events.watch();
 
