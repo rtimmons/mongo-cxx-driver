@@ -49,7 +49,7 @@ bsoncxx::document::value doc(std::string key, T val) {
 ///
 // phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the return-type is haunting
 auto gen_next = [](bool has_next) {
-    return [=](mongoc_change_stream_t* stream, const bson_t** bson) mutable -> bool {
+    return [=](mongoc_change_stream_t*, const bson_t** bson) mutable -> bool {
         if (has_next) {
             *bson = BCON_NEW("some", "doc");
         }
@@ -62,7 +62,7 @@ auto gen_next = [](bool has_next) {
 ///
 auto gen_error = [](bool has_error) {
     return
-        [=](const mongoc_change_stream_t* stream, bson_error_t* err, const bson_t** bson) -> bool {
+        [=](const mongoc_change_stream_t*, bson_error_t* err, const bson_t** bson) -> bool {
             if (has_error) {
                 bson_set_error(err,
                                MONGOC_ERROR_CURSOR,
@@ -74,9 +74,9 @@ auto gen_error = [](bool has_error) {
         };
 };
 
-auto watch_interpose = [](const mongoc_collection_t* coll,
-                          const bson_t* pipeline,
-                          const bson_t* opts) -> mongoc_change_stream_t* { return nullptr; };
+auto watch_interpose = [](const mongoc_collection_t*,
+                          const bson_t*,
+                          const bson_t*) -> mongoc_change_stream_t* { return nullptr; };
 
 auto destroy_interpose = [](mongoc_change_stream_t* stream) -> void {};
 
