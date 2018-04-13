@@ -245,6 +245,7 @@ TEST_CASE("Documentation Examples", "[min36]") {
         // It is undefined to dereference .begin() SECTION .begin() == .end()
         if (iterator != stream.end()) {
             bsoncxx::document::view event = *iterator;
+            std::cout << bsoncxx::to_json(event) << std::endl;
         }
     }
 
