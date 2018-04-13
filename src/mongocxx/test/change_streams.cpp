@@ -170,7 +170,7 @@ TEST_CASE("Mock streams and error-handling") {
     }
 }
 
-TEST_CASE("A non-existent collection is watched") {
+TEST_CASE("A non-existent collection is watched", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
@@ -186,7 +186,7 @@ TEST_CASE("A non-existent collection is watched") {
     }
 }
 
-TEST_CASE("We give an invalid pipeline") {
+TEST_CASE("We give an invalid pipeline", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
@@ -212,7 +212,7 @@ TEST_CASE("We give an invalid pipeline") {
     }
 }
 
-TEST_CASE("Documentation Examples") {
+TEST_CASE("Documentation Examples", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
@@ -264,7 +264,7 @@ TEST_CASE("Documentation Examples") {
     }
 }
 
-TEST_CASE("A collection is watched") {
+TEST_CASE("A collection is watched", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
