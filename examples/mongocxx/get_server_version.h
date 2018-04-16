@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MONGO_CXX_DRIVER_GET_SERVER_VERSION_H
-#define MONGO_CXX_DRIVER_GET_SERVER_VERSION_H
+#pragma once
 
 #include <string>
 
@@ -27,5 +26,3 @@ std::string get_server_version(const mongocxx::client& client) {
 
     return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
 }
-
-#endif  // MONGO_CXX_DRIVER_GET_SERVER_VERSION_H
