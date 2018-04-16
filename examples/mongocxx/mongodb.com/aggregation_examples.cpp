@@ -18,7 +18,6 @@
 #include <sstream>
 #include <vector>
 
-#include <get_server_version.h>
 #include <bsoncxx/builder/basic/array.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/string/to_string.hpp>
@@ -31,6 +30,14 @@
 // corresponding page on docs.mongodb.com. See CXX-1514, CXX-1249, and DRIVERS-356 for more info.
 
 using namespace mongocxx;
+
+std::string get_server_version(const mongocxx::client& client) {
+    bsoncxx::builder::basic::document server_status{};
+    server_status.append(bsoncxx::builder::basic::kvp("serverStatus", 1));
+    bsoncxx::document::value output = client["test"].run_command(server_status.extract());
+
+    return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
+}
 
 void aggregation_examples(const mongocxx::client& client, const mongocxx::database& db) {
     {
