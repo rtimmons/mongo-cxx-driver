@@ -35,10 +35,9 @@ std::string get_server_version(const mongocxx::client& client) {
 void watch_forever(mongocxx::pool& pool) {
     auto client = pool.acquire();
 
+    mongocxx::options::change_stream options;
     // Wait up to 1 second before polling again.
     const std::chrono::milliseconds await_time{1000};
-
-    mongocxx::options::change_stream options;
     options.max_await_time(await_time);
 
     auto collection = (*client)["db"]["coll"];
