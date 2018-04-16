@@ -90,12 +90,12 @@ TEST_CASE("Mock streams and error-handling") {
     change_stream_destroy->interpose(destroy_interpose).forever();
     auto stream = events.watch();
 
-    SECTION("We have one event") {
+    SECTION("One event") {
         change_stream_next->interpose(gen_next(true));
         auto it = stream.begin();
         REQUIRE(*it == make_document(kvp("some", "doc")).view());
 
-        SECTION("Then we have no events forever") {
+        SECTION("Then no events forever") {
             // Mock no more events forever.
             change_stream_next->interpose(gen_next(false)).forever();
             change_stream_error_document->interpose(gen_error(false)).forever();
@@ -107,12 +107,12 @@ TEST_CASE("Mock streams and error-handling") {
                 REQUIRE(++it == stream.end());
                 REQUIRE(*it == make_document().view());
             }
-            SECTION("At end") {
+            SECTION("Reached thee end") {
                 REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
             }
         }
 
-        SECTION("Then no events for an iteration then an error") {
+        SECTION("No events for an iteration, then an error") {
             // Mock no more events for one pass.
             change_stream_next->interpose(gen_next(false));
             change_stream_error_document->interpose(gen_error(false));
@@ -122,15 +122,15 @@ TEST_CASE("Mock streams and error-handling") {
             // Mock an error
             change_stream_next->interpose(gen_next(false)).forever();
             change_stream_error_document->interpose(gen_error(true)).forever();
-            SECTION("Then throw on post-incr") {
+            SECTION("Throw on post-incr") {
                 REQUIRE_THROWS(it++);
                 REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
             }
-            SECTION("Then throw on pre-incr") {
+            SECTION("Throw on pre-incr") {
                 REQUIRE_THROWS(++it);
                 REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
             }
-            SECTION("Then throw on .begin") {
+            SECTION("Throw on .begin") {
                 REQUIRE_THROWS(stream.begin());
 
                 // Then nothing forever
@@ -139,22 +139,22 @@ TEST_CASE("Mock streams and error-handling") {
             }
         }
 
-        SECTION("Then we have an error") {
-            // next call indicates no next and no error
+        SECTION("Then error") {
+            // next call indicates no next and an error
             change_stream_next->interpose(gen_next(false));
             change_stream_error_document->interpose(gen_error(true));
 
-            SECTION("We throw on subsequent increment") {
+            SECTION("Throw on subsequent increment") {
                 REQUIRE_THROWS(it++);
 
-                SECTION("We're at the end") {
+                SECTION("Then at end") {
                     REQUIRE(it == stream.end());
                 }
-                SECTION("We remain at error state") {
+                SECTION("Remain at error state") {
                     REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
                     REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
                 }
-                SECTION("We don't hold on to previous document") {
+                SECTION("Don't hold on to previous document") {
                     // Debatable if we want to require this behavior since it's
                     // inconsistent with other cases of dereferencing something
                     // that's == end(). Important thing is that we don't maintain
@@ -166,7 +166,7 @@ TEST_CASE("Mock streams and error-handling") {
     }
 }
 
-TEST_CASE("A non-existent collection is watched", "[min36]") {
+TEST_CASE("Watch a non-existent collection", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
@@ -174,12 +174,8 @@ TEST_CASE("A non-existent collection is watched", "[min36]") {
     database db = mongodb_client["does_not_exist"];
     collection dne = db["does_not_exist"];
 
-    SECTION("We try to watch it") {
-        change_stream stream = dne.watch();
-        SECTION("We get an error on .watch") {
-            REQUIRE_THROWS(stream.begin());
-        }
-    }
+    change_stream stream = dne.watch();
+    REQUIRE_THROWS(stream.begin());
 }
 
 // Put this before other tests which assume the collection already exists.
@@ -195,7 +191,7 @@ TEST_CASE("Create streams.events and assert we can read a single event", "[min36
     REQUIRE(std::distance(stream.begin(), stream.end()) == 1);
 }
 
-TEST_CASE("We give an invalid pipeline", "[min36]") {
+TEST_CASE("Give an invalid pipeline", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
@@ -206,7 +202,7 @@ TEST_CASE("We give an invalid pipeline", "[min36]") {
 
     auto stream = events.watch(p);
 
-    SECTION("An error is thrown on .begin() even if no events") {
+    SECTION("Error on .begin() even if no events") {
         REQUIRE_THROWS(stream.begin());
     }
     SECTION("After error, begin == end repeatedly") {
@@ -272,7 +268,7 @@ TEST_CASE("Documentation Examples", "[min36]") {
     }
 }
 
-TEST_CASE("A collection is watched", "[min36]") {
+TEST_CASE("Watch a Collection", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
     options::change_stream options{};
@@ -280,7 +276,7 @@ TEST_CASE("A collection is watched", "[min36]") {
 
     change_stream x = events.watch();
 
-    SECTION("We can copy- and move-assign iterators") {
+    SECTION("Can copy- and move-assign iterators") {
         REQUIRE(events.insert_one(doc("a", "b")));
 
         auto one = x.begin();
@@ -301,11 +297,11 @@ TEST_CASE("A collection is watched", "[min36]") {
         // two is in moved-from state. Technically `three == two` but that's not required.
     }
 
-    SECTION("We have a default change stream and no events") {
-        SECTION("We can move-assign it") {
+    SECTION("Default change stream and no events") {
+        SECTION("Can move-assign it") {
             change_stream move_copy = std::move(x);
         }
-        SECTION("We can move-construct it") {
+        SECTION("Can move-construct it") {
             change_stream move_constructed = change_stream{std::move(x)};
         }
         SECTION(".end == .end") {
@@ -314,7 +310,7 @@ TEST_CASE("A collection is watched", "[min36]") {
             auto e = x.end();
             REQUIRE(e == e);
         }
-        SECTION("We don't have any events") {
+        SECTION("No events and iterator equality") {
             REQUIRE(x.begin() == x.end());
 
             // a bit pedantic
@@ -332,15 +328,15 @@ TEST_CASE("A collection is watched", "[min36]") {
         }
     }
 
-    SECTION("We have no events") {
+    SECTION("No events => iterator distance is zero") {
         REQUIRE(std::distance(x.begin(), x.end()) == 0);
         REQUIRE(std::distance(x.begin(), x.end()) == 0);
     }
 
-    SECTION("We have a single event") {
+    SECTION("Single event") {
         REQUIRE(events.insert_one(doc("a", "b")));
 
-        SECTION("We can receive an event") {
+        SECTION("Can receive it") {
             auto it = *(x.begin());
             REQUIRE(it["fullDocument"]["a"].get_utf8().value == stdx::string_view("b"));
         }
@@ -356,7 +352,7 @@ TEST_CASE("A collection is watched", "[min36]") {
             REQUIRE(e != it);
         }
 
-        SECTION("We can deref iterator with value multiple times") {
+        SECTION("Can deref iterator with value multiple times") {
             auto it = x.begin();
             auto a = *it;
             auto b = *it;
@@ -370,7 +366,7 @@ TEST_CASE("A collection is watched", "[min36]") {
             REQUIRE(a == b);
         }
 
-        SECTION("We have no more events after the first one") {
+        SECTION("No more events after the first one") {
             auto it = x.begin();
             it++;
             REQUIRE(it == x.end());
@@ -390,7 +386,7 @@ TEST_CASE("A collection is watched", "[min36]") {
         }
     }
 
-    SECTION("We have multiple events") {
+    SECTION("Multiple events") {
         REQUIRE(events.insert_one(doc("a", "b")));
         REQUIRE(events.insert_one(doc("c", "d")));
 
@@ -407,7 +403,7 @@ TEST_CASE("A collection is watched", "[min36]") {
             REQUIRE(dist == 2);
         }
 
-        SECTION("We can advance two iterators through the events") {
+        SECTION("Can advance two iterators through the events") {
             auto one = x.begin();
             auto two = x.begin();
 
@@ -426,13 +422,13 @@ TEST_CASE("A collection is watched", "[min36]") {
         }
     }
 
-    SECTION("We have already advanced past the first set of events") {
+    SECTION("Have already advanced past the first set of events") {
         REQUIRE(events.insert_one(doc("a", "b")));
         REQUIRE(events.insert_one(doc("c", "d")));
 
         REQUIRE(std::distance(x.begin(), x.end()) == 2);
 
-        SECTION("We try to look for more events") {
+        SECTION("Try to look for more events") {
             REQUIRE(x.begin() == x.end());
         }
 
@@ -442,7 +438,7 @@ TEST_CASE("A collection is watched", "[min36]") {
         }
     }
 
-    SECTION("We only want to see update operations") {
+    SECTION("Update-only pipeline") {
         // Get full doc and deltas but only for updates
         mongocxx::options::change_stream opts;
         opts.full_document(bsoncxx::string::view_or_value{"updateLookup"});
@@ -458,7 +454,7 @@ TEST_CASE("A collection is watched", "[min36]") {
                           make_document(kvp("$set", make_document(kvp("a", "A")))));
         events.delete_one(make_document(kvp("_id", "one")));
 
-        SECTION("We only see updates :)") {
+        SECTION("See single update and not updates or deletes") {
             auto n_events = std::distance(stream.begin(), stream.end());
             REQUIRE(n_events == 1);
         }
