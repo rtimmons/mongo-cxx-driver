@@ -46,10 +46,11 @@ bsoncxx::document::value doc(std::string key, T val) {
 //
 // phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the
 // return-type is haunting
+static auto next_bson = BCON_NEW("some", "doc");
 const auto gen_next = [](bool has_next) {
     return [=](mongoc_change_stream_t*, const bson_t** bson) mutable -> bool {
         if (has_next) {
-            *bson = BCON_NEW("some", "doc");
+            *bson = next_bson;
         }
         return has_next;
     };
@@ -63,7 +64,7 @@ const auto gen_error = [](bool has_error) {
                            MONGOC_ERROR_CURSOR,
                            MONGOC_ERROR_CHANGE_STREAM_NO_RESUME_TOKEN,
                            "expected error");
-            *bson = BCON_NEW("from", "gen_error");  // different from what's in gen_next
+            *bson = NULL;
         }
         return has_error;
     };
@@ -95,7 +96,7 @@ TEST_CASE("Mock streams and error-handling") {
         REQUIRE(*it == make_document(kvp("some", "doc")).view());
 
         SECTION("Then we have no events forever") {
-            // Mock no more events fever.
+            // Mock no more events forever.
             change_stream_next->interpose(gen_next(false)).forever();
             change_stream_error_document->interpose(gen_error(false)).forever();
             // We've reached end.
