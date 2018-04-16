@@ -59,7 +59,7 @@ int main() {
         {
             auto client = pool.acquire();
             if (get_server_version(*client) < "3.6") {
-                return 1;
+                return 0;
             }
         }
 
