@@ -97,7 +97,7 @@ change_stream::iterator::iterator(const change_stream* change_stream)
 }
 
 // Don't worry about the case of two iterators being created from
-// different change_streams
+// different change_streams.
 bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
                               const change_stream::iterator& rhs) noexcept {
     return rhs.is_exhausted() == lhs.is_exhausted();

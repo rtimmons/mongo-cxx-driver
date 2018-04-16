@@ -33,8 +33,8 @@ using bsoncxx::builder::basic::make_document;
 
 using namespace mongocxx;
 
-// Create a single-item document
-// E.g. doc("foo", 123) creates {"foo":123}
+// Create a single-item document.
+// E.g. doc("foo", 123) creates {"foo":123}.
 template <typename T>
 bsoncxx::document::value doc(std::string key, T val) {
     bsoncxx::builder::basic::document out{};
@@ -44,8 +44,8 @@ bsoncxx::document::value doc(std::string key, T val) {
 
 // Generates lambda/interpose for change_stream_next
 //
-// phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the
-// return-type is haunting
+// Phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the
+// return-type is haunting.
 static auto next_bson = BCON_NEW("some", "doc");
 const auto gen_next = [](bool has_next) {
     return [=](mongoc_change_stream_t*, const bson_t** bson) mutable -> bool {
@@ -56,7 +56,7 @@ const auto gen_next = [](bool has_next) {
     };
 };
 
-// Generates lambda/interpose for change_stream_error_document
+// Generates lambda/interpose for change_stream_error_document.
 const auto gen_error = [](bool has_error) {
     return [=](const mongoc_change_stream_t*, bson_error_t* err, const bson_t** bson) -> bool {
         if (has_error) {
@@ -71,8 +71,8 @@ const auto gen_error = [](bool has_error) {
 };
 
 const auto watch_interpose = [](const mongoc_collection_t*,
-                          const bson_t*,
-                          const bson_t*) -> mongoc_change_stream_t* { return nullptr; };
+                                const bson_t*,
+                                const bson_t*) -> mongoc_change_stream_t* { return nullptr; };
 
 const auto destroy_interpose = [](mongoc_change_stream_t*) -> void {};
 
