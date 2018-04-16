@@ -33,10 +33,8 @@ using bsoncxx::builder::basic::make_document;
 
 using namespace mongocxx;
 
-///
-/// Create a single-item document
-/// E.g. doc("foo", 123) creates {"foo":123}
-///
+// Create a single-item document
+// E.g. doc("foo", 123) creates {"foo":123}
 template <typename T>
 bsoncxx::document::value doc(std::string key, T val) {
     bsoncxx::builder::basic::document out{};
@@ -44,12 +42,11 @@ bsoncxx::document::value doc(std::string key, T val) {
     return std::move(out.extract());
 }
 
-///
-/// Generates lambda/interpose for change_stream_next
-///
+// Generates lambda/interpose for change_stream_next
+//
 // phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the
 // return-type is haunting
-auto gen_next = [](bool has_next) {
+const auto gen_next = [](bool has_next) {
     return [=](mongoc_change_stream_t*, const bson_t** bson) mutable -> bool {
         if (has_next) {
             *bson = BCON_NEW("some", "doc");
@@ -58,10 +55,8 @@ auto gen_next = [](bool has_next) {
     };
 };
 
-///
-/// Generates lambda/interpose for change_stream_error_document
-///
-auto gen_error = [](bool has_error) {
+// Generates lambda/interpose for change_stream_error_document
+const auto gen_error = [](bool has_error) {
     return [=](const mongoc_change_stream_t*, bson_error_t* err, const bson_t** bson) -> bool {
         if (has_error) {
             bson_set_error(err,
@@ -74,11 +69,11 @@ auto gen_error = [](bool has_error) {
     };
 };
 
-auto watch_interpose = [](const mongoc_collection_t*,
+const auto watch_interpose = [](const mongoc_collection_t*,
                           const bson_t*,
                           const bson_t*) -> mongoc_change_stream_t* { return nullptr; };
 
-auto destroy_interpose = [](mongoc_change_stream_t*) -> void {};
+const auto destroy_interpose = [](mongoc_change_stream_t*) -> void {};
 
 TEST_CASE("Mock streams and error-handling") {
     MOCK_CHANGE_STREAM
