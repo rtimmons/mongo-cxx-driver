@@ -237,16 +237,6 @@ TEST_CASE("Documentation Examples", "[min36]") {
         }
     }
 
-    SECTION("Example 1, Version 2") {
-        change_stream stream = inventory.watch();
-        change_stream::iterator iterator = stream.begin();
-        // It is undefined to dereference .begin() SECTION .begin() == .end()
-        if (iterator != stream.end()) {
-            bsoncxx::document::view event = *iterator;
-            std::cout << bsoncxx::to_json(event) << std::endl;
-        }
-    }
-
     SECTION("Example 2") {
         options::change_stream options;
         options.full_document(bsoncxx::string::view_or_value{"updateLookup"});
