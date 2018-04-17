@@ -24,23 +24,21 @@
 #include <mongocxx/pool.hpp>
 #include <mongocxx/uri.hpp>
 
-std::string get_server_version(const mongocxx::client& client) {
+std::string get_server_version(mongocxx::pool::entry& entry) {
     bsoncxx::builder::basic::document server_status{};
     server_status.append(bsoncxx::builder::basic::kvp("serverStatus", 1));
-    bsoncxx::document::value output = client["test"].run_command(server_status.extract());
+    bsoncxx::document::value output = (*entry)["test"].run_command(server_status.extract());
 
     return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
 }
 
-void watch_forever(mongocxx::pool& pool) {
-    auto client = pool.acquire();
-
+void watch_forever(mongocxx::pool::entry& entry) {
     mongocxx::options::change_stream options;
     // Wait up to 1 second before polling again.
     const std::chrono::milliseconds await_time{1000};
     options.max_await_time(await_time);
 
-    auto collection = (*client)["db"]["coll"];
+    auto collection = (*entry)["db"]["coll"];
     mongocxx::change_stream stream = collection.watch(options);
 
     while (true) {
@@ -56,26 +54,26 @@ int main() {
     mongocxx::pool pool{uri};
 
     try {
-        {
-            auto client = pool.acquire();
-            if (get_server_version(*client) < "3.6") {
-                return 0;
-            }
+        auto entry = pool.acquire();
+        if (get_server_version(entry) < "3.6") {
+            return EXIT_SUCCESS;
         }
 
-        watch_forever(pool);
+        watch_forever(entry);
 
-        return 0;
+        return EXIT_SUCCESS;
     } catch (...) {
-        auto e = std::current_exception();
+        auto current_exception = std::current_exception();
         try {
-            if (e) {
-                std::rethrow_exception(e);
+            if (current_exception) {
+                std::rethrow_exception(current_exception);
             }
-        } catch (const std::exception& e) {
-            std::cerr << "Caught exception \"" << e.what() << "\"" << std::endl;
+        } catch (const std::exception& exception) {
+            std::cerr << "Caught exception \"" << exception.what() << "\"" << std::endl;
+        } catch(...) {
+            std::cerr << "Caught unknown exception type" << std::endl;
         }
     }
 
-    return 1;
+    return EXIT_FAILURE;
 }
