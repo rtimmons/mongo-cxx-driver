@@ -189,6 +189,10 @@ TEST_CASE("Create streams.events and assert we can read a single event", "[min36
     change_stream stream = events.watch();
     events.insert_one(make_document(kvp("another", "event")));
     REQUIRE(std::distance(stream.begin(), stream.end()) == 1);
+
+    // because we watch events2 in a test
+    auto events2 = mongodb_client["streams"]["events2"];
+    events2.drop();
 }
 
 TEST_CASE("Give an invalid pipeline", "[min36]") {
@@ -265,6 +269,27 @@ TEST_CASE("Documentation Examples", "[min36]") {
                 std::cout << bsoncxx::to_json(event) << std::endl;
             }
         }
+    }
+}
+
+TEST_CASE("Watch 2 collections", "[min36]") {
+    instance::current();
+    client mongodb_client{uri{}};
+    options::change_stream options{};
+
+    collection events = mongodb_client["streams"]["events"];
+    collection events2 = mongodb_client["streams"]["events2"];
+
+    change_stream x = events.watch();
+    change_stream x2 = events.watch();
+
+    SECTION("Empty iterators not equal") {
+        REQUIRE(x.begin() == x.begin());
+        REQUIRE(x.begin() != x2.begin());
+        REQUIRE(x.begin() == x.end());
+    }
+    SECTION("End iterators are equal even from different streams") {
+        REQUIRE(x.end() == x2.end());
     }
 }
 

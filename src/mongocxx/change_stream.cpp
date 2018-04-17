@@ -96,11 +96,20 @@ change_stream::iterator::iterator(const change_stream* change_stream)
     operator++();
 }
 
-// Don't worry about the case of two iterators being created from
-// different change_streams.
+// Care about the underlying change_stream being the same so we can
+// support a collection of iterators for change streams from different
+// collections.
+// NOTE: We do allow stream1.end() == stream2.end()
 bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
                               const change_stream::iterator& rhs) noexcept {
-    return rhs.is_exhausted() == lhs.is_exhausted();
+
+    return
+        // They're for the same stream...
+        (lhs._change_stream == rhs._change_stream) ||
+        // ...or rhs is .end() and lhs is exhausted (this is the common case when it == stream.end())x
+        (rhs._change_stream == nullptr && lhs.is_exhausted()) ||
+        // ...or lhs is .end() and rhs is exhausted.
+        (lhs._change_stream == nullptr && rhs.is_exhausted());
 }
 
 bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,
