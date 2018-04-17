@@ -32,7 +32,7 @@ std::string get_server_version(mongocxx::pool::entry& entry) {
     return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
 }
 
-void watch_forever(mongocxx::pool::entry& entry) {
+void watch_until(mongocxx::pool::entry& entry, const std::chrono::time_point<std::chrono::system_clock> end) {
     mongocxx::options::change_stream options;
     // Wait up to 1 second before polling again.
     const std::chrono::milliseconds await_time{1000};
@@ -41,7 +41,7 @@ void watch_forever(mongocxx::pool::entry& entry) {
     auto collection = (*entry)["db"]["coll"];
     mongocxx::change_stream stream = collection.watch(options);
 
-    while (true) {
+    while (std::chrono::system_clock::now() < end) {
         for (const auto& event : stream) {
             std::cout << bsoncxx::to_json(event) << std::endl;
         }
@@ -55,24 +55,23 @@ int main() {
 
     try {
         auto entry = pool.acquire();
+
         if (get_server_version(entry) < "3.6") {
+            std::cerr << "Change streams are only supported on Mongo versions >= 3.6." << std::endl;
+            // CXX-1548: Should return EXIT_FAILURE, but Travis is currently running Mongo 3.4
             return EXIT_SUCCESS;
         }
 
-        watch_forever(entry);
+        // End in 10 seconds:
+        const auto end = std::chrono::system_clock::now() + std::chrono::seconds{10};
+
+        watch_until(entry, end);
 
         return EXIT_SUCCESS;
-    } catch (...) {
-        auto current_exception = std::current_exception();
-        try {
-            if (current_exception) {
-                std::rethrow_exception(current_exception);
-            }
-        } catch (const std::exception& exception) {
-            std::cerr << "Caught exception \"" << exception.what() << "\"" << std::endl;
-        } catch(...) {
-            std::cerr << "Caught unknown exception type" << std::endl;
-        }
+    } catch (const std::exception& exception) {
+        std::cerr << "Caught exception \"" << exception.what() << "\"" << std::endl;
+    } catch(...) {
+        std::cerr << "Caught unknown exception type" << std::endl;
     }
 
     return EXIT_FAILURE;
