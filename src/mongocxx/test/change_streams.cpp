@@ -25,7 +25,6 @@
 
 #include <third_party/catch/include/helpers.hpp>
 
-
 namespace {
 
 using bsoncxx::builder::basic::document;
@@ -49,7 +48,7 @@ bsoncxx::document::value doc(std::string key, T val) {
 // Phrased as a lambda instead of function because c++11 doesn't have decltype(auto) and the
 // return-type is haunting.
 const auto gen_next = [](bool has_next) {
-    static mongocxx::libbson::scoped_bson_t next_bson {make_document(kvp("some","doc"))};
+    static mongocxx::libbson::scoped_bson_t next_bson{make_document(kvp("some", "doc"))};
     return [=](mongoc_change_stream_t*, const bson_t** bson) mutable -> bool {
         if (has_next) {
             *bson = next_bson.bson_for_init();

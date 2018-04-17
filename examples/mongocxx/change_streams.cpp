@@ -32,7 +32,8 @@ std::string get_server_version(mongocxx::pool::entry& entry) {
     return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
 }
 
-void watch_until(mongocxx::pool::entry& entry, const std::chrono::time_point<std::chrono::system_clock> end) {
+void watch_until(mongocxx::pool::entry& entry,
+                 const std::chrono::time_point<std::chrono::system_clock> end) {
     mongocxx::options::change_stream options;
     // Wait up to 1 second before polling again.
     const std::chrono::milliseconds await_time{1000};
@@ -70,7 +71,7 @@ int main() {
         return EXIT_SUCCESS;
     } catch (const std::exception& exception) {
         std::cerr << "Caught exception \"" << exception.what() << "\"" << std::endl;
-    } catch(...) {
+    } catch (...) {
         std::cerr << "Caught unknown exception type" << std::endl;
     }
 

@@ -102,11 +102,10 @@ change_stream::iterator::iterator(const change_stream* change_stream)
 // NOTE: We do allow stream1.end() == stream2.end()
 bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
                               const change_stream::iterator& rhs) noexcept {
-
     return
         // They're for the same stream...
         (lhs._change_stream == rhs._change_stream) ||
-        // ...or rhs is .end() and lhs is exhausted (this is the common case when it == stream.end())x
+        // ...or rhs is .end() and lhs is exhausted
         (rhs._change_stream == nullptr && lhs.is_exhausted()) ||
         // ...or lhs is .end() and rhs is exhausted.
         (lhs._change_stream == nullptr && rhs.is_exhausted());
