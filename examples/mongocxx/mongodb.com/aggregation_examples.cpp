@@ -31,7 +31,7 @@
 
 using namespace mongocxx;
 
-std::string get_server_version(const mongocxx::client& client) {
+std::string get_server_version(const client& client) {
     bsoncxx::builder::basic::document server_status{};
     server_status.append(bsoncxx::builder::basic::kvp("serverStatus", 1));
     bsoncxx::document::value output = client["test"].run_command(server_status.extract());
