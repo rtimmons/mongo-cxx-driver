@@ -24,22 +24,24 @@
 #include <mongocxx/pool.hpp>
 #include <mongocxx/uri.hpp>
 
-std::string get_server_version(mongocxx::pool::entry& entry) {
+namespace {
+
+std::string get_server_version(const mongocxx::client& client) {
     bsoncxx::builder::basic::document server_status{};
     server_status.append(bsoncxx::builder::basic::kvp("serverStatus", 1));
-    bsoncxx::document::value output = (*entry)["test"].run_command(server_status.extract());
+    bsoncxx::document::value output = client["test"].run_command(server_status.extract());
 
     return bsoncxx::string::to_string(output.view()["version"].get_utf8().value);
 }
 
-void watch_until(mongocxx::pool::entry& entry,
+void watch_until(const mongocxx::client& client,
                  const std::chrono::time_point<std::chrono::system_clock> end) {
     mongocxx::options::change_stream options;
     // Wait up to 1 second before polling again.
     const std::chrono::milliseconds await_time{1000};
     options.max_await_time(await_time);
 
-    auto collection = (*entry)["db"]["coll"];
+    auto collection = client["db"]["coll"];
     mongocxx::change_stream stream = collection.watch(options);
 
     while (std::chrono::system_clock::now() < end) {
@@ -49,6 +51,8 @@ void watch_until(mongocxx::pool::entry& entry,
     }
 }
 
+}  // namespace
+
 int main() {
     mongocxx::instance inst{};
     mongocxx::uri uri{"mongodb://localhost:27017/?minPoolSize=3&maxPoolSize=3"};
@@ -57,7 +61,7 @@ int main() {
     try {
         auto entry = pool.acquire();
 
-        if (get_server_version(entry) < "3.6") {
+        if (get_server_version(*entry) < "3.6") {
             std::cerr << "Change streams are only supported on Mongo versions >= 3.6." << std::endl;
             // CXX-1548: Should return EXIT_FAILURE, but Travis is currently running Mongo 3.4
             return EXIT_SUCCESS;
@@ -66,7 +70,7 @@ int main() {
         // End in 10 seconds:
         const auto end = std::chrono::system_clock::now() + std::chrono::seconds{10};
 
-        watch_until(entry, end);
+        watch_until(*entry, end);
 
         return EXIT_SUCCESS;
     } catch (const std::exception& exception) {
