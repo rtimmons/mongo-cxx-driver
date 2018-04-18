@@ -179,7 +179,7 @@ TEST_CASE("Watch a non-existent collection", "[min36]") {
     REQUIRE_THROWS(stream.begin());
 }
 
-// Put this before other tests which assume the collection already exists.
+// Put this before other tests which assume the collections already exists.
 TEST_CASE("Create streams.events and assert we can read a single event", "[min36]") {
     instance::current();
     client mongodb_client{uri{}};
@@ -282,6 +282,30 @@ TEST_CASE("Watch 2 collections", "[min36]") {
     SECTION("End iterators are equal even from different streams") {
         REQUIRE(x.end() == x2.end());
     }
+
+    SECTION("Non-empty iterators") {
+        REQUIRE(events.insert_one(doc("a", "b")));
+        REQUIRE(events2.insert_one(doc("a2", "b2")));
+
+        SECTION(".begin() from separate streams not equal") {
+            auto one = x.begin();
+            auto two = x2.begin();
+
+            one++;
+            two++;
+
+            REQUIRE(one == x.end());
+            REQUIRE(two == x2.end());
+            REQUIRE(x.end() == x2.end());
+
+            // But they're still not equal!
+            // (transitivity isn't guaranteed for end/exhausted iterators)
+            REQUIRE(one != two);
+        }
+        SECTION(".end() from separate streams equal") {
+            REQUIRE(x.end() == x2.end());
+        }
+    }
 }
 
 TEST_CASE("Watch a Collection", "[min36]") {
@@ -341,6 +365,7 @@ TEST_CASE("Watch a Collection", "[min36]") {
         SECTION("Empty iterator is equivalent to user-constructed iterator") {
             REQUIRE(x.begin() == change_stream::iterator{});
             REQUIRE(x.end() == change_stream::iterator{});
+            REQUIRE(change_stream::iterator{} == change_stream::iterator{});
         }
     }
 
