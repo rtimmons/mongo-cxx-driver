@@ -283,28 +283,22 @@ TEST_CASE("Watch 2 collections", "[min36]") {
         REQUIRE(x.end() == x2.end());
     }
 
-    SECTION("Non-empty iterators") {
-        REQUIRE(events.insert_one(doc("a", "b")));
-        REQUIRE(events2.insert_one(doc("a2", "b2")));
+    SECTION(".begin() from separate streams not equal") {
+        REQUIRE(x.begin() != x2.begin());
+    }
+    SECTION(".end() from separate streams equal") {
+        REQUIRE(x.end() == x2.end());
+    }
 
-        SECTION(".begin() from separate streams not equal") {
-            auto one = x.begin();
-            auto two = x2.begin();
+    SECTION("Iterator == transitivity") {
+        auto one = x.begin();
+        auto two = x2.begin();
 
-            one++;
-            two++;
+        REQUIRE(one == x.end());
+        REQUIRE(two == x2.end());
+        REQUIRE(x.end() == x2.end());
 
-            REQUIRE(one == x.end());
-            REQUIRE(two == x2.end());
-            REQUIRE(x.end() == x2.end());
-
-            // But they're still not equal!
-            // (transitivity isn't guaranteed for end/exhausted iterators)
-            REQUIRE(one != two);
-        }
-        SECTION(".end() from separate streams equal") {
-            REQUIRE(x.end() == x2.end());
-        }
+        REQUIRE(one == two);
     }
 }
 
