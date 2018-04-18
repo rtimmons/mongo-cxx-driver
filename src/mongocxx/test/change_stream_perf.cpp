@@ -19,10 +19,12 @@
 
 namespace {
 
+
+    using namespace bsoncxx::builder::basic;
     using namespace std::chrono;
     using namespace std;
+
     using time_point = std::chrono::time_point<std::chrono::system_clock>;
-    using dur = std::chrono::duration<long>;
 
     struct timed_result {
         const time_point start;
@@ -46,18 +48,14 @@ namespace {
             result.finish = system_clock::now();
         }
     };
-    auto time = [](string name, auto f) {
+
+    auto time = [](const string& name, auto f) {
         auto out = make_unique<timed_result>();
-        finally q {*out};
+        finally _ {*out};
         int result = f();
         out->result = result;
         return out;
     };
-
-//    template<typename F, typename O>
-//    ostream& operator<<(ostream& out, const timed<F,O>& timed) {
-//        return out;
-//    }
 
     ostream& operator<<(ostream& out, const time_point& p) {
         std::time_t t = system_clock::to_time_t(p);
@@ -76,29 +74,44 @@ namespace {
 
     template<class T>
     class TD;
-    using namespace bsoncxx::builder::basic;
 
     void watch_until(const mongocxx::client& client,
                      const time_point end) {
         auto collection = client["db"]["coll"];
+        // cleanup before we do anything
+        collection.drop();
+        collection.insert_one(make_document(kvp("dummy","1")));
+
         mongocxx::change_stream stream = collection.watch();
 
-        auto i = 0;
-
+        int i = 0;
+        int count = 0;
+        microseconds total;
         while (system_clock::now() < end) {
-            auto result = time("insert", [&](){
+            auto insert = time("insert", [&i, &collection]() {
                 bsoncxx::document::view_or_value doc = make_document(kvp("a",++i));
                 collection.insert_one(doc);
-                return true;
+                return 1;
+            });
+            auto retrieve = time("retrieve", [&stream,&count]() {
+                auto it = stream.begin();
+                if (count > 0) {
+                    it++;
+                }
+                *it;
+                return 0;
             });
 
-            std::cout << result->start << std::endl;
-            std::cout << result->result.value() << std::endl;
-            std::cout << result->finish << std::endl;
-            for (const auto& event : stream) {
-                std::cout << bsoncxx::to_json(event) << std::endl;
-            }
+            // TODO: make method for this?
+            auto op = duration_cast<microseconds>(retrieve->finish.value() - insert->start);
+//            cout << "op=" << op.count() << endl;
+            total += op;
+            ++count;
         }
+
+        std::cout << count << "/" << total.count() << " ops/microseconds" << endl;
+        auto ratio = duration_cast<seconds>(microseconds(1) * total.count());
+        std::cout << (double(count) / double(ratio.count())) << " ops/seconds" << endl;
     }
 
 }  // namespace
@@ -113,7 +126,7 @@ TEST_CASE("Main") {
         auto entry = pool.acquire();
 
         // End in 1 seconds:
-        const auto end = std::chrono::system_clock::now() + std::chrono::seconds{1};
+        const auto end = std::chrono::system_clock::now() + std::chrono::seconds{10};
 
         watch_until(*entry, end);
 
