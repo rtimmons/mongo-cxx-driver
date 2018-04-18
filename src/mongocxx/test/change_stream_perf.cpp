@@ -2,6 +2,7 @@
 #include <chrono>
 #include <iostream>
 #include <optional>
+#include <ctime>
 
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
@@ -23,38 +24,53 @@ namespace {
     using time_point = std::chrono::time_point<std::chrono::system_clock>;
     using dur = std::chrono::duration<long>;
 
-    template<typename F, typename O>
-    class timed {
-    private:
-        const F lambda;
-        std::optional<time_point> start;
-        std::optional<time_point> end;
-        struct finally {
-            timed& t;
-            explicit finally(timed& t_) : t{t_} {}
-            ~finally() {
-                t.end = system_clock::now();
-            }
-        };
-    public:
-        timed(F lambda_)
-        : lambda{std::move(lambda_)} {}
+    struct timed_result {
+        const time_point start;
+        optional<time_point> finish;
+        optional<int> result;
 
-        std::optional<dur> time() {
-            if (end) {
-                return end.value() - start.value();
-            }
-            return std::make_optional<dur>(nullptr);
-        }
-        O operator()() {
-            start = system_clock::now();
-            finally{*this};
-            return lambda();
-        }
+        explicit timed_result()
+        : start{system_clock::now()},
+          finish{make_optional<time_point>()},
+          result{make_optional<int>()} {}
     };
 
-    template<typename F, typename O>
-    ostream& operator<<(ostream& out, const timed<F,O>& timed) {
+    struct finally {
+        explicit finally(timed_result& result_) : result{result_} {}
+
+        void operator=(const finally&) = delete;
+        finally(finally&&other) = delete;
+
+        timed_result& result;
+        ~finally() {
+            result.finish = system_clock::now();
+        }
+    };
+    auto time = [](string name, auto f) {
+        auto out = make_unique<timed_result>();
+        finally q {*out};
+        int result = f();
+        out->result = result;
+        return out;
+    };
+
+//    template<typename F, typename O>
+//    ostream& operator<<(ostream& out, const timed<F,O>& timed) {
+//        return out;
+//    }
+
+    ostream& operator<<(ostream& out, const time_point& p) {
+        std::time_t t = system_clock::to_time_t(p);
+        out << std::ctime(&t);
+        return out;
+    }
+
+    ostream& operator<<(ostream& out, const optional<time_point>& p) {
+        if(p) {
+            out << p.value();
+        } else {
+            out << "(?)";
+        }
         return out;
     }
 
@@ -70,12 +86,15 @@ namespace {
         auto i = 0;
 
         while (system_clock::now() < end) {
-            const function<void(void)> f = [&](){
+            auto result = time("insert", [&](){
                 bsoncxx::document::view_or_value doc = make_document(kvp("a",++i));
                 collection.insert_one(doc);
-            };
-            timed<decltype(f), void> t (f);
-            t();
+                return true;
+            });
+
+            std::cout << result->start << std::endl;
+            std::cout << result->result.value() << std::endl;
+            std::cout << result->finish << std::endl;
             for (const auto& event : stream) {
                 std::cout << bsoncxx::to_json(event) << std::endl;
             }
@@ -93,8 +112,8 @@ TEST_CASE("Main") {
     try {
         auto entry = pool.acquire();
 
-        // End in 10 seconds:
-        const auto end = std::chrono::system_clock::now() + std::chrono::seconds{10};
+        // End in 1 seconds:
+        const auto end = std::chrono::system_clock::now() + std::chrono::seconds{1};
 
         watch_until(*entry, end);
 
