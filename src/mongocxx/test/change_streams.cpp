@@ -108,7 +108,7 @@ TEST_CASE("Mock streams and error-handling") {
                 REQUIRE(++it == stream.end());
                 REQUIRE(*it == make_document().view());
             }
-            SECTION("Reached thee end") {
+            SECTION("Reached the end") {
                 REQUIRE(std::distance(stream.begin(), stream.end()) == 0);
             }
         }

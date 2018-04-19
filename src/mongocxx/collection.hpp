@@ -790,7 +790,7 @@ class MONGOCXX_API collection {
     /// @return
     ///  A change stream on this collection.
     ///
-    /// @see https://docs.mongodb.com/manual/reference/method/db.collection.watch/index.html
+    /// @see https://docs.mongodb.com/manual/changeStreams/
     ///
     change_stream watch(const pipeline& pipe, const options::change_stream& options = {});
 
