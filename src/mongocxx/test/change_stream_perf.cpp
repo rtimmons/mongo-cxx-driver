@@ -38,7 +38,7 @@ namespace {
     };
 
     struct finally {
-        explicit finally(timed_result& result_) : result{result_} {}
+        constexpr explicit finally(timed_result& result_) : result{result_} {}
 
         void operator=(const finally&) = delete;
         finally(finally&&other) = delete;
@@ -49,13 +49,14 @@ namespace {
         }
     };
 
-    auto time = [](const string& name, auto f) {
+    template<typename F>
+    auto time(const string& name, F f) {
         auto out = make_unique<timed_result>();
         finally _ {*out};
         int result = f();
         out->result = result;
         return out;
-    };
+    }
 
     ostream& operator<<(ostream& out, const time_point& p) {
         std::time_t t = system_clock::to_time_t(p);
@@ -76,42 +77,54 @@ namespace {
     class TD;
 
     void watch_until(const mongocxx::client& client,
-                     const time_point end) {
+                     const time_point& end) {
+
         auto collection = client["db"]["coll"];
+
         // cleanup before we do anything
         collection.drop();
+        // insert a dummy doc to recreate collection
         collection.insert_one(make_document(kvp("dummy","1")));
 
-        mongocxx::change_stream stream = collection.watch();
+        const mongocxx::change_stream stream = collection.watch();
 
         int i = 0;
         int count = 0;
+        const int docs = 10;
+
         microseconds total;
         while (system_clock::now() < end) {
             auto insert = time("insert", [&i, &collection]() {
-                bsoncxx::document::view_or_value doc = make_document(kvp("a",++i));
-                collection.insert_one(doc);
+                for(int j=0; j < docs; ++j){
+                    bsoncxx::document::view_or_value doc = make_document(kvp("a",++i));
+                    collection.insert_one(doc);
+                }
                 return 1;
             });
             auto retrieve = time("retrieve", [&stream,&count]() {
                 auto it = stream.begin();
                 if (count > 0) {
-                    it++;
+                    for(int j=0; j < docs - 1; ++j) {
+                        it++;
+                    }
                 }
                 *it;
                 return 0;
             });
 
             // TODO: make method for this?
-            auto op = duration_cast<microseconds>(retrieve->finish.value() - insert->start);
-//            cout << "op=" << op.count() << endl;
-            total += op;
+            total += duration_cast<microseconds>(retrieve->finish.value() - insert->start);
+
             ++count;
+            sleep(1);
         }
+
+        auto remaining = std::distance(stream.begin(), stream.end());
 
         std::cout << count << "/" << total.count() << " ops/microseconds" << endl;
         auto ratio = duration_cast<seconds>(microseconds(1) * total.count());
         std::cout << (double(count) / double(ratio.count())) << " ops/seconds" << endl;
+        std::cout << remaining << " events remained" << endl;
     }
 
 }  // namespace
