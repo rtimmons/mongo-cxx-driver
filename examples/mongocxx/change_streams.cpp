@@ -47,6 +47,8 @@ void watch_until(const mongocxx::client& client,
     while (std::chrono::system_clock::now() < end) {
         for (const auto& event : stream) {
             std::cout << bsoncxx::to_json(event) << std::endl;
+            if (std::chrono::system_clock::now() >= end)
+                break;
         }
     }
 }
