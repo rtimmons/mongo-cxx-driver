@@ -442,6 +442,18 @@ TEST_CASE("Watch a Collection", "[min36]") {
             REQUIRE(dist == 2);
         }
 
+        SECTION("Can't advance the .end iterator") {
+            auto e = x.end();
+            e++;
+            auto dist = std::distance(x.begin(), x.end());
+            REQUIRE(dist == 2);
+        }
+
+        SECTION("Can advance two .begin iterators") {
+            ++x.begin();
+            REQUIRE(std::distance(x.begin(), x.end()) == 1);
+        }
+
         SECTION("Can advance two iterators through the events") {
             auto one = x.begin();
             auto two = x.begin();

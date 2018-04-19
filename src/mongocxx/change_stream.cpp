@@ -78,7 +78,9 @@ const bsoncxx::document::view* change_stream::iterator::operator->() const {
 }
 
 change_stream::iterator& change_stream::iterator::operator++() {
-    _change_stream->_impl->advance_iterator();
+    if(itype == iter_type::tracking) {
+        _change_stream->_impl->advance_iterator();
+    }
     return *this;
 }
 
