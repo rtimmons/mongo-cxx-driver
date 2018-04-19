@@ -66,7 +66,8 @@ change_stream::iterator change_stream::end() const {
 change_stream::change_stream(void* change_stream_ptr)
     : _impl(stdx::make_unique<impl>(*static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
 
-change_stream::iterator::iterator() : change_stream::iterator::iterator{nullptr, iter_type::user_constructed} {}
+change_stream::iterator::iterator()
+    : change_stream::iterator::iterator{nullptr, iter_type::user_constructed} {}
 
 const bsoncxx::document::view& change_stream::iterator::operator*() const {
     return _change_stream->_impl->doc();
@@ -103,7 +104,8 @@ bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
                               const change_stream::iterator& rhs) noexcept {
     return
         // They're for the same stream...
-        (lhs._change_stream == rhs._change_stream) && (
+        (lhs._change_stream == rhs._change_stream) &&
+        (
             // ...and...
             // Either one side is is .end()-constructed, and the other is exhausted...
             (lhs.itype == change_stream::iterator::iter_type::end && rhs.is_exhausted()) ||
