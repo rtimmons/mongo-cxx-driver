@@ -55,18 +55,18 @@ change_stream::iterator change_stream::begin() const {
     if (_impl->is_dead()) {
         return end();
     }
-    return iterator{this};
+    return iterator{this, change_stream::iterator::iter_type::tracking};
 }
 
 change_stream::iterator change_stream::end() const {
-    return iterator{};
+    return iterator{this, change_stream::iterator::iter_type::end};
 }
 
 // void* since we don't leak C driver defs into C++ driver
 change_stream::change_stream(void* change_stream_ptr)
     : _impl(stdx::make_unique<impl>(*static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
 
-change_stream::iterator::iterator() : change_stream::iterator::iterator{nullptr} {}
+change_stream::iterator::iterator() : change_stream::iterator::iterator{nullptr, iter_type::user_constructed} {}
 
 const bsoncxx::document::view& change_stream::iterator::operator*() const {
     return _change_stream->_impl->doc();
@@ -85,9 +85,9 @@ void change_stream::iterator::operator++(int) {
     operator++();
 }
 
-change_stream::iterator::iterator(const change_stream* change_stream)
-    : _change_stream(change_stream) {
-    if (!_change_stream || _change_stream->_impl->has_started()) {
+change_stream::iterator::iterator(const change_stream* change_stream, const iter_type type)
+    : _change_stream{change_stream}, itype{type} {
+    if (type != iter_type::tracking || _change_stream->_impl->has_started()) {
         return;
     }
 
@@ -99,16 +99,17 @@ change_stream::iterator::iterator(const change_stream* change_stream)
 // Care about the underlying change_stream being the same so we can
 // support a collection of iterators for change streams from different
 // collections.
-// NOTE: We do allow stream1.end() == stream2.end()
 bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
                               const change_stream::iterator& rhs) noexcept {
     return
         // They're for the same stream...
-        (lhs._change_stream == rhs._change_stream) ||
-        // ...or rhs is .end() and lhs is exhausted
-        (rhs._change_stream == nullptr && lhs.is_exhausted()) ||
-        // ...or lhs is .end() and rhs is exhausted.
-        (lhs._change_stream == nullptr && rhs.is_exhausted());
+        (lhs._change_stream == rhs._change_stream) && (
+            // ...and...
+            // Either one side is is .end()-constructed, and the other is exhausted...
+            (lhs.itype == change_stream::iterator::iter_type::end && rhs.is_exhausted()) ||
+            (rhs.itype == change_stream::iterator::iter_type::end && lhs.is_exhausted()) ||
+            // ...or they're the same type & exhausted-state.
+            (rhs.itype == lhs.itype && rhs.is_exhausted() == lhs.is_exhausted()));
 }
 
 bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,

@@ -279,26 +279,30 @@ TEST_CASE("Watch 2 collections", "[min36]") {
         REQUIRE(x.begin() != x2.begin());
         REQUIRE(x.begin() == x.end());
     }
-    SECTION("End iterators are equal even from different streams") {
-        REQUIRE(x.end() == x2.end());
+    SECTION("End iterators are not equal from different streams") {
+        REQUIRE(x.end() != x2.end());
     }
-
+    SECTION("End iterators equal themselves") {
+        REQUIRE(x.end() == x.end());
+        REQUIRE(x2.end() == x2.end());
+    }
     SECTION(".begin() from separate streams not equal") {
         REQUIRE(x.begin() != x2.begin());
     }
-    SECTION(".end() from separate streams equal") {
-        REQUIRE(x.end() == x2.end());
+    SECTION(".begin equal themselves") {
+        REQUIRE(x.begin() == x.begin());
+        REQUIRE(x2.begin() == x2.begin());
     }
 
-    SECTION("Iterator == transitivity") {
+    SECTION("Iterator transitivity") {
         auto one = x.begin();
         auto two = x2.begin();
 
         REQUIRE(one == x.end());
         REQUIRE(two == x2.end());
-        REQUIRE(x.end() == x2.end());
 
-        REQUIRE(one == two);
+        REQUIRE(x.end() != x2.end());
+        REQUIRE(one != two);
     }
 }
 
@@ -356,9 +360,9 @@ TEST_CASE("Watch a Collection", "[min36]") {
             REQUIRE(e == b);
             REQUIRE(b == e);
         }
-        SECTION("Empty iterator is equivalent to user-constructed iterator") {
-            REQUIRE(x.begin() == change_stream::iterator{});
-            REQUIRE(x.end() == change_stream::iterator{});
+        SECTION("Empty iterator is not equivalent to user-constructed iterator") {
+            REQUIRE(x.begin() != change_stream::iterator{});
+            REQUIRE(x.end() != change_stream::iterator{});
             REQUIRE(change_stream::iterator{} == change_stream::iterator{});
         }
     }

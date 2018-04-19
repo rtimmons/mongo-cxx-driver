@@ -137,8 +137,11 @@ class MONGOCXX_API change_stream::iterator {
 
    private:
     friend class change_stream;
+    enum class iter_type {
+        tracking, user_constructed, end
+    };
 
-    MONGOCXX_PRIVATE explicit iterator(const change_stream* change_stream);
+    MONGOCXX_PRIVATE explicit iterator(const change_stream* change_stream, iter_type type);
 
     ///
     /// @{
@@ -159,6 +162,7 @@ class MONGOCXX_API change_stream::iterator {
 
     MONGOCXX_PRIVATE bool is_exhausted() const;
 
+    iter_type itype;
     const change_stream* _change_stream;
 };
 
