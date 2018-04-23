@@ -59,7 +59,7 @@ change_stream::iterator change_stream::begin() const {
 }
 
 change_stream::iterator change_stream::end() const {
-    return iterator{this, change_stream::iterator::iter_type::end};
+    return iterator{change_stream::iterator::iter_type::end, this};
 }
 
 // void* since we don't leak C driver defs into C++ driver
@@ -67,7 +67,7 @@ change_stream::change_stream(void* change_stream_ptr)
     : _impl(stdx::make_unique<impl>(*static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
 
 change_stream::iterator::iterator()
-    : change_stream::iterator::iterator{nullptr, iter_type::user_constructed} {}
+    : change_stream::iterator::iterator{iter_type::user_constructed, nullptr} {}
 
 const bsoncxx::document::view& change_stream::iterator::operator*() const {
     return _change_stream->_impl->doc();
@@ -88,8 +88,8 @@ void change_stream::iterator::operator++(int) {
     operator++();
 }
 
-change_stream::iterator::iterator(const change_stream* change_stream, const iter_type type)
-    : _change_stream{change_stream}, itype{type} {
+change_stream::iterator::iterator(const iter_type type, const change_stream* change_stream)
+    : itype{type}, _change_stream{change_stream} {
     if (type != iter_type::tracking || _change_stream->_impl->has_started()) {
         return;
     }
