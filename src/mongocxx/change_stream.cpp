@@ -55,7 +55,7 @@ change_stream::iterator change_stream::begin() const {
     if (_impl->is_dead()) {
         return end();
     }
-    return iterator{this, change_stream::iterator::iter_type::tracking};
+    return iterator{change_stream::iterator::iter_type::tracking, this};
 }
 
 change_stream::iterator change_stream::end() const {

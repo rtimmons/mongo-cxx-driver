@@ -139,7 +139,7 @@ class MONGOCXX_API change_stream::iterator {
     friend class change_stream;
     enum class iter_type { tracking, user_constructed, end };
 
-    MONGOCXX_PRIVATE explicit iterator(const change_stream* change_stream, iter_type type);
+    MONGOCXX_PRIVATE explicit iterator(iter_type type, const change_stream* change_stream);
 
     ///
     /// @{
