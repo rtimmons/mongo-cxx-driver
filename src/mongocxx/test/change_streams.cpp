@@ -91,6 +91,23 @@ TEST_CASE("Mock streams and error-handling") {
     change_stream_destroy->interpose(destroy_interpose).forever();
     auto stream = events.watch();
 
+    SECTION("Default-constructed iterator move/copy/assign") {
+        change_stream::iterator it1;
+        change_stream::iterator it2;
+
+        REQUIRE(it1 == it2);
+        REQUIRE(it2 == it1);
+
+        change_stream::iterator it3 = it1;
+        REQUIRE(it2 == it3);
+        REQUIRE(it3 == it1);
+
+        // Trivially-copyable so no effect, but prevent regressions
+        // from deleting move:
+        change_stream::iterator it4 = std::move(it3);
+        REQUIRE(it4 == it1);
+    }
+
     SECTION("One event") {
         change_stream_next->interpose(gen_next(true));
         auto it = stream.begin();

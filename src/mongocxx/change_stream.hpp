@@ -97,7 +97,8 @@ class MONGOCXX_API change_stream::iterator {
 
     ///
     /// Default-construct an iterator.
-    /// This is equivalent to change_stream::end()
+    /// Default-constucted iterators can be compared (all default-constructed
+    /// iterators are ==), assigned, and copied.
     ///
     iterator();
 
@@ -160,7 +161,7 @@ class MONGOCXX_API change_stream::iterator {
 
     MONGOCXX_PRIVATE bool is_exhausted() const;
 
-    iter_type itype;
+    iter_type _type;
     const change_stream* _change_stream;
 };
 

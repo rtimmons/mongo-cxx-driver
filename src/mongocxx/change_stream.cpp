@@ -78,7 +78,7 @@ const bsoncxx::document::view* change_stream::iterator::operator->() const {
 }
 
 change_stream::iterator& change_stream::iterator::operator++() {
-    if(itype == iter_type::k_tracking) {
+    if (_type == iter_type::k_tracking) {
         _change_stream->_impl->advance_iterator();
     }
     return *this;
@@ -89,7 +89,7 @@ void change_stream::iterator::operator++(int) {
 }
 
 change_stream::iterator::iterator(const iter_type type, const change_stream* change_stream)
-    : itype{type}, _change_stream{change_stream} {
+    : _type{type}, _change_stream{change_stream} {
     if (type != iter_type::k_tracking || _change_stream->_impl->has_started()) {
         return;
     }
@@ -104,15 +104,22 @@ change_stream::iterator::iterator(const iter_type type, const change_stream* cha
 // collections.
 bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
                               const change_stream::iterator& rhs) noexcept {
+    // Tracking different streams never equal.
+    if (lhs._change_stream != rhs._change_stream) {
+        return false;
+    }
+    // User-constructed:
+    if (rhs._change_stream == nullptr) {
+        return lhs._change_stream == nullptr;
+    }
+    // Both end or tracking:
+    if (rhs._type == lhs._type) {
+        return rhs.is_exhausted() == lhs.is_exhausted();
+    }
     return
-        // They're for the same stream...
-        (lhs._change_stream == rhs._change_stream) &&
-        (
-            // Either one side is .end()-constructed, and the other is exhausted...
-            (lhs.itype == change_stream::iterator::iter_type::k_end && rhs.is_exhausted()) ||
-            (rhs.itype == change_stream::iterator::iter_type::k_end && lhs.is_exhausted()) ||
-            // ...or they're the same type & exhausted-state.
-            (rhs.itype == lhs.itype && rhs.is_exhausted() == lhs.is_exhausted()));
+        // Either one side is .end()-constructed, and the other is exhausted
+        (lhs._type == change_stream::iterator::iter_type::k_end && rhs.is_exhausted()) ||
+        (rhs._type == change_stream::iterator::iter_type::k_end && lhs.is_exhausted());
 }
 
 bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,
@@ -121,7 +128,7 @@ bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,
 }
 
 bool change_stream::iterator::is_exhausted() const {
-    // An iterator is exhausted if it is the end-iterator (_change_stream == nullptr)
+    // An iterator is exhausted if it is use-constructed (_change_stream == nullptr)
     // or if the underlying _change_stream is marked exhausted.
     return !_change_stream || _change_stream->_impl->is_exhausted();
 }
