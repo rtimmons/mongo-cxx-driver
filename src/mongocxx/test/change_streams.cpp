@@ -401,6 +401,20 @@ TEST_CASE("Watch a Collection", "[min36]") {
     SECTION("Single event") {
         REQUIRE(events.insert_one(doc("a", "b")));
 
+        SECTION("end iterators equal") {
+            REQUIRE(x.end() == x.end());
+        }
+        SECTION("begin iterators equal") {
+            REQUIRE(x.begin() == x.begin());
+        }
+        SECTION("begin != end") {
+            REQUIRE(x.begin() != x.end());
+        }
+        SECTION("end != begin") {
+            REQUIRE(x.end() != x.begin());
+        }
+
+
         SECTION("Can receive it") {
             auto it = *(x.begin());
             REQUIRE(it["fullDocument"]["a"].get_utf8().value == stdx::string_view("b"));
