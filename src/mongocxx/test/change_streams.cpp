@@ -98,6 +98,15 @@ TEST_CASE("Mock streams and error-handling") {
         REQUIRE(it1 == it2);
         REQUIRE(it2 == it1);
 
+        it2 = it1;
+
+        REQUIRE(it1 == it2);
+        REQUIRE(it2 == it1);
+
+        change_stream::iterator it2copy {it2};
+        REQUIRE(it1 == it2copy);
+        REQUIRE(it2 == it2copy);
+
         change_stream::iterator it3 = it1;
         REQUIRE(it2 == it3);
         REQUIRE(it3 == it1);
