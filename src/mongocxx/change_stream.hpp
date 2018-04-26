@@ -161,6 +161,7 @@ class MONGOCXX_API change_stream::iterator {
 
     MONGOCXX_PRIVATE bool is_exhausted() const;
 
+    // iter_type==k_default_constructed is equivalent to _change_stream==nullptr
     iter_type _type;
     const change_stream* _change_stream;
 };

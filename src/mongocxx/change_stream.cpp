@@ -118,8 +118,8 @@ bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
     }
     return
         // Either one side is .end()-constructed, and the other is exhausted
-        (lhs._type == change_stream::iterator::iter_type::k_end && rhs.is_exhausted()) ||
-        (rhs._type == change_stream::iterator::iter_type::k_end && lhs.is_exhausted());
+        ((lhs._type == change_stream::iterator::iter_type::k_end) && rhs.is_exhausted()) ||
+        ((rhs._type == change_stream::iterator::iter_type::k_end) && lhs.is_exhausted());
 }
 
 bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,
@@ -128,9 +128,7 @@ bool MONGOCXX_CALL operator!=(const change_stream::iterator& lhs,
 }
 
 bool change_stream::iterator::is_exhausted() const {
-    // An iterator is exhausted if it is use-constructed (_change_stream == nullptr)
-    // or if the underlying _change_stream is marked exhausted.
-    return !_change_stream || _change_stream->_impl->is_exhausted();
+    return _change_stream->_impl->is_exhausted();
 }
 
 MONGOCXX_INLINE_NAMESPACE_END
