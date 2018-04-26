@@ -55,11 +55,11 @@ change_stream::iterator change_stream::begin() const {
     if (_impl->is_dead()) {
         return end();
     }
-    return iterator{change_stream::iterator::iter_type::tracking, this};
+    return iterator{change_stream::iterator::iter_type::k_tracking, this};
 }
 
 change_stream::iterator change_stream::end() const {
-    return iterator{change_stream::iterator::iter_type::end, this};
+    return iterator{change_stream::iterator::iter_type::k_end, this};
 }
 
 // void* since we don't leak C driver defs into C++ driver
@@ -67,7 +67,7 @@ change_stream::change_stream(void* change_stream_ptr)
     : _impl(stdx::make_unique<impl>(*static_cast<mongoc_change_stream_t*>(change_stream_ptr))) {}
 
 change_stream::iterator::iterator()
-    : change_stream::iterator::iterator{iter_type::user_constructed, nullptr} {}
+    : change_stream::iterator::iterator{iter_type::k_default_constructed, nullptr} {}
 
 const bsoncxx::document::view& change_stream::iterator::operator*() const {
     return _change_stream->_impl->doc();
@@ -78,7 +78,7 @@ const bsoncxx::document::view* change_stream::iterator::operator->() const {
 }
 
 change_stream::iterator& change_stream::iterator::operator++() {
-    if(itype == iter_type::tracking) {
+    if(itype == iter_type::k_tracking) {
         _change_stream->_impl->advance_iterator();
     }
     return *this;
@@ -90,7 +90,7 @@ void change_stream::iterator::operator++(int) {
 
 change_stream::iterator::iterator(const iter_type type, const change_stream* change_stream)
     : itype{type}, _change_stream{change_stream} {
-    if (type != iter_type::tracking || _change_stream->_impl->has_started()) {
+    if (type != iter_type::k_tracking || _change_stream->_impl->has_started()) {
         return;
     }
 
@@ -109,8 +109,8 @@ bool MONGOCXX_CALL operator==(const change_stream::iterator& lhs,
         (lhs._change_stream == rhs._change_stream) &&
         (
             // Either one side is .end()-constructed, and the other is exhausted...
-            (lhs.itype == change_stream::iterator::iter_type::end && rhs.is_exhausted()) ||
-            (rhs.itype == change_stream::iterator::iter_type::end && lhs.is_exhausted()) ||
+            (lhs.itype == change_stream::iterator::iter_type::k_end && rhs.is_exhausted()) ||
+            (rhs.itype == change_stream::iterator::iter_type::k_end && lhs.is_exhausted()) ||
             // ...or they're the same type & exhausted-state.
             (rhs.itype == lhs.itype && rhs.is_exhausted() == lhs.is_exhausted()));
 }
