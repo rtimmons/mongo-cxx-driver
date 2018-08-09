@@ -10,7 +10,7 @@ compiler:
 env:
     global:
         - MONGO_REPO="[ arch=amd64 ] http://repo.mongodb.com/apt/ubuntu"
-        - REPO_TYPE="trusty/mongodb-enterprise/3.4 multiverse"
+        - REPO_TYPE="trusty/mongodb-enterprise/3.6 multiverse"
         - SOURCES_LOC="/etc/apt/sources.list.d/mongodb-enterprise.list"
         - KEY_SERVER="hkp://keyserver.ubuntu.com:80"
         - CMAKE_VERSION="cmake-3.2.3-Linux-x86_64"
